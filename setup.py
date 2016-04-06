@@ -15,6 +15,7 @@ setup(
 	'psycopg2>=2.6.1',
 	'SQLAlchemy>=1.0.6',
         'hy>=0.11.1',
+        'pyparsing==2.2.1'
     ],
     package_data={'witchcraft': ['*.txt']},
     provides=['witchcraft (0.2)'],
