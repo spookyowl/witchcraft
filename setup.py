@@ -7,7 +7,7 @@ setup(
     description='',
     author='Peter Facka',
     author_email='pfacka@trackingwire.com',
-    url='https://github.com/pypa/sampleproject',
+    url='https://github.com/trackingwire/witchcraft',
     packages=[
         'witchcraft',
     ],
