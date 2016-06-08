@@ -7,6 +7,7 @@ setup(
     description='',
     author='Peter Facka',
     author_email='pfacka@trackingwire.com',
+    url='https://github.com/pypa/sampleproject',
     packages=[
         'witchcraft',
     ],
@@ -17,7 +18,16 @@ setup(
         'hy>=0.11.1',
         'pyparsing>=2.1.1'
     ],
-    package_data={'witchcraft': ['*.txt']},
     provides=['witchcraft (0.2)'],
     include_package_data=True,
+    classifiers=[
+      'Development Status :: 3 - Alpha',
+      'Environment :: Web Environment',
+      'Intended Audience :: Developers',
+      'Operating System :: Microsoft :: Windows',
+      'Operating System :: MacOS :: MacOS X',
+      'Operating System :: POSIX',
+      'Programming Language :: Python :: 2.7',
+      'License :: OSI Approved :: MIT License',
+      ],
 )
