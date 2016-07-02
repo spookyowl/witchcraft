@@ -12,6 +12,9 @@ def build_tuple_type(*columns):
                 setattr(self, k, d.get(k))
     
         def __getitem__(self, k):
+            if isinstance(k, int):
+                return getattr(self,self.__slots__[k])
+
             if k in self.__slots__:
                 return getattr(self, k)
     
@@ -19,9 +22,18 @@ def build_tuple_type(*columns):
             return value in self.__slots__
     
         def __eq__(self, value):
+                    
+            if len(self.__slots__) == 1:
+                stored_value = self[0]
 
-            for k in self.__slots__:
-                if getattr(self, k) != value[k]:
+                if isinstance(value, type(stored_value)) \
+                    or (isinstance(stored_value, unicode) and isinstance(value, str)) \
+                    or (isinstance(stored_value, str) and isinstance(value, unicode)):
+
+                    return stored_value == value
+           
+            for i,k in enumerate(self.__slots__):
+                if getattr(self, k) != value[i]:
                     return False
 
             return True
@@ -39,6 +51,10 @@ def build_tuple_type(*columns):
             return 'WCF ' + d.__repr__()
 
         def __hash__(self):
+
+            if len(self.__slots__) == 1:
+                return hash(self.values()[0])
+
             return hash(tuple(self.values()))
 
         def get(self, k, default=None):
@@ -49,6 +65,8 @@ def build_tuple_type(*columns):
 
                 except AttributeError:
                     return default
+
+            return None
 
         def keys(self):
             return self.__slots__
