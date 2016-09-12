@@ -1,0 +1,59 @@
+CREATE TEMP TABLE data_update (
+  :(map
+     (fn [column]
+         (+ (get column 0) " " (get (get column 1) "psql_type")))
+    columns),
+
+  PRIMARY KEY (
+    :primary_keys
+  )
+);
+
+
+INSERT INTO :schema_name.:table_name
+  (:column_names)
+
+VALUES ?(map
+          (fn [dp]
+            (list
+             (map
+                (fn [cn]
+                   (get dp cn))
+              column_names)))
+           data-points);
+
+
+UPDATE :schema_name.:table_name
+  SET 
+    :(map
+   (fn [column] 
+      (+ "\"" column "\"" "= data_update.\"" column "\""))
+   column_names)
+
+FROM data_update     
+WHERE
+1 = 1
+:(reduce
+   (fn [memo pkey]
+     (+ memo " AND " schema-name "." table-name "." pkey "= data_update." pkey))
+   primary_keys "")
+
+
+-- LOCK TABLE :schema_name.:table_name IN EXCLUSIVE MODE;
+
+INSERT INTO :schema_name.:table_name
+  (:column_names)
+
+SELECT
+  (:column_names)
+
+FROM data_update
+
+LEFT OUTER JOIN :schema_name.:table_name 
+ON 1 = 1
+:(reduce
+   (fn [memo pkey]
+     (+ memo " AND " table-name "." pkey "= data_update." pkey))
+   primary_keys "")
+
+WHERE :(get primary_keys 0) IS NULL;
