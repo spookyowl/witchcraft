@@ -13,7 +13,7 @@ setup(
     ],
     zip_safe=False,	
     install_requires=[
-	'psycopg2>=2.6.1',
+	'psycopg2>=2.6.2',
 	'SQLAlchemy>=1.0.6',
         'hy>=0.11.1',
         'pyparsing>=2.1.1'

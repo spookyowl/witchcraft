@@ -1,10 +1,24 @@
 import sqlalchemy
 
 
+def get_value(data, keys, default=None):
+    result = None
+
+    for k in keys:
+        result = data.get(k)
+        
+        if result is not None:
+            return result
+
+    if result is None:
+        return default
+
+
 class Connection(object):
     
     def __init__(self, auth):
         url = self._build_url(auth)
+        self.database_type = get_value(auth, ['type', 'db_type'], 'pgsql')
         self.engine = sqlalchemy.create_engine(url, convert_unicode=True)
         self.connection = None
         self.transaction = None
@@ -36,17 +50,6 @@ class Connection(object):
 
     def _build_url(self, auth):
 
-        def get_value(data, keys, default=None):
-            result = None
-
-            for k in keys:
-                result = data.get(k)
-                
-                if result is not None:
-                    return result
-
-            if result is None:
-                return default
 
         db_type = get_value(auth, ['type', 'db_type'], 'pgsql')
 
@@ -72,4 +75,3 @@ class Connection(object):
             RaiseValue('db_type must be eighter "mysql" or "pgsql"')
 
         return url_tpl % auth
-

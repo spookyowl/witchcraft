@@ -21,11 +21,12 @@ def th(*operations):
 
 
 def set_query_path(path):
+    global __query_paths
 
     if isinstance(path, list):
-        __query_paths = [path] 
+        __query_paths = path
 
-    elif isinstance(path, str):
+    elif isinstance(path, str) or isinstance(path, unicode):
         __query_paths = [path] 
 
 
@@ -61,6 +62,8 @@ def template(template_name, context = None, dialect = None):
         conv_context = {}
         for k,v in context.items():
             conv_context[conv_symbol_name(k)] = v
+    else:
+        conv_context = {}
 
     found = __template_cache.get(cache_key)
 
@@ -90,6 +93,8 @@ def template(template_name, context = None, dialect = None):
             __template_cache[cache_key] = query_tpl
             #TODO: cache template instance
             return Template(query_tpl, dialect).substitute(**conv_context)
+
+    raise ValueError('Template not found')
 
 
 def filter(data, func):
@@ -150,7 +155,9 @@ def columns(data, columns):
     return to_tuple(data, columns)
 
 
+#TODO: allow renaming of columns
 def select_columns(data, columns):
+
     tuple_type = build_tuple_type(*columns)
 
     if isinstance(data, list):
@@ -225,11 +232,10 @@ def _flatten(keys, items, column_names):
         result.append(dict(key_part, **i))
 
     return result
-
     
 
+#TODO: really required???
 def flatten_dict(data, column_names):
-    print 'flatten_dict', data
     result = []
 
     if isinstance(data, dict):
@@ -252,17 +258,60 @@ def flatten_dict(data, column_names):
         return data
 
 
+def flatten(mapping):
+
+    keys = mapping.keys()
+    values = mapping.values()
+
+    def find_non_empty(v):
+        for i in v:
+            if len(i) > 0:
+                return i
+
+    if len(keys) == 0:
+        return []
+
+    value = find_non_empty(values)
+
+    if isinstance(value, list):
+        list_value = True
+        value_keys = value[0].keys()
+
+    else:
+        list_value = False
+        value_keys = value.keys()
+
+    keys = keys[0].keys() + value_keys
+
+    ResultType = build_tuple_type(*keys)
+
+    result = []
+
+    if list_value:
+        for key, value in mapping.items():
+            for item in value:
+              result.append(ResultType(key.items() + item.items()))
+                
+    else:
+        for key, value in mapping.items():
+            result.append(ResultType(key.items() + value.items()))
+
+    return result
+
+
 # itemize(['name'] 'columns')
 def itemize_dict(mapping, columns):
     result = []
+    result_type = build_tuple_type(*columns)
+
     for key, value in mapping.items():
         item = {}
 
-        for i,c in enumerate(columns[:-1]):
+        for i, c in enumerate(columns[:-1]):
             item[c] = key.values()[i]
 
         item[columns[-1]] = value
-        result.append(item)
+        result.append(result_type(item))
 
     return result
 
@@ -286,7 +335,7 @@ def complement(left, right, func):
     return result
 
 
-def intersect(left, right, func):
+def intersect(left, right, combine_fn):
     left_keys = set(left.keys())
 
     if isinstance(right, dict):
@@ -319,14 +368,42 @@ def intersect(left, right, func):
     return result
 
 
-def join(left, right, combine_fn):
-    pass
+def join_by_columns(left, right, left_keys, right_keys):
+
+    mlk = set(left[0].keys()) - set(left_keys)
+    mrk = set(right[0].keys()) - set(right_keys)
+
+    tuple_type = build_tuple_type(list(mrk)+list(mlk))
+
+    def merge(left, right, k):
+        
+        if len(right) == 0:
+            return tuple_type(left)
+
+        result = []
+
+        for li in left:
+            
+            for ri in right:
+                r = tuple_type(dict(li.items() + ri.items()))
+                result.append(r)
+            
+        return result
+
+    left = group_by_columns(left, left_keys)
+    right = group_by_columns(right, right_keys)
+
+    result = intersect(left, right, merge)
+    return flatten(result)
 
 
+#TODO: join_by_fn
 def union():
     pass
 
 
-def to_tuple(data, keys):
+def to_tuple(data, keys=None):
+    if keys is None:
+        keys = data[0].keys()
     tuple_type = build_tuple_type(*keys)
     return map(tuple_type, data)

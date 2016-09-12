@@ -26,6 +26,7 @@ def string_to_quoted_expr(s):
 
 
 def quote_param(value, dialect='psql'):
+
     if value is None:
         return "NULL"
 
@@ -57,9 +58,15 @@ def quote_param(value, dialect='psql'):
     if isinstance(value, date):
         return "'%s'" % value.isoformat()
 
+    if isinstance(value, set):
+        quote_func = lambda p: quote_param(p, dialect)
+        return "(" + ','.join(map(quote_func, value)) + ")"
+
     if isinstance(value, list):
         quote_func = lambda p: quote_param(p, dialect)
         return "(" + ','.join(map(quote_func, value)) + ")"
+
+
 
     raise ValueError("unhandled type: %s" % type(value))
 
@@ -97,7 +104,6 @@ class Parameter(object):
         quote_func = lambda p: quote_param(p, dialect)
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
-
 
         if isinstance(value, list) or isinstance(value, imap):
             value = ', '.join(list(map(conv_func, value)))
@@ -157,7 +163,7 @@ class Template(object):
 
     def __init__(self, tpl, dialect = 'psql'):
         self.tpl = tpl
-        first_line = self.tpl.splitlines()[0]
+        first_line = self.tpl.splitlines()[0] #TODO: To get dialect
         self.dialect = dialect
 
     def substitute(self, **context):
