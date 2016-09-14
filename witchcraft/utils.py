@@ -224,6 +224,33 @@ class DictItem(DictMixin, BaseItem):
     def copy(self):
         return self.__class__(self)
 
+    def load(self, source):
+        
+        for key in self.fields.keys():
+
+            value = source.get(key)
+
+            if value is None:
+                self[key] = None
+
+            elif isinstance(value, unicode):
+                self[key] = value.encode('utf-8', 'ignore')
+            
+            elif isinstance(value, list):
+                self[key] = json.dumps(value)
+
+            elif isinstance(value, dict):
+                self[key] = json.dumps(value)
+
+    def select(self, keys):
+        result = []
+
+        for key in keys:
+            if key in self.keys():
+                result.append(self[key])
+
+        return result
+
     def add_field(self, name, **kwargs):
         field = Field(**kwargs)
         self.fields[name] = field

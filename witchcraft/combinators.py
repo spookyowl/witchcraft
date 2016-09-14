@@ -4,10 +4,11 @@ import os.path
 from witchcraft.utils import build_tuple_type
 from witchcraft.template import Template
 
+base_path = os.path.dirname(os.path.abspath(__file__))
 
 __buildin_filter = filter
 __buildin_map = map
-__query_paths = ['./', './queries', './templates']
+__query_paths = ['./', './queries', './templates', os.path.join(base_path, 'queries')]
 __template_cache = {}
 
 

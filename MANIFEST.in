@@ -1,1 +1,2 @@
 include witchcraft/*.txt
+include witchcraft/queries/*.sql

@@ -64,11 +64,15 @@ def quote_param(value, dialect='psql'):
 
     if isinstance(value, list):
         quote_func = lambda p: quote_param(p, dialect)
-        return "(" + ','.join(map(quote_func, value)) + ")"
+        try:
+            return "(" + ','.join(map(quote_func, value)) + ")"
+        except Exception as e:
+            print e 
+            raise ValueError(value)
 
 
 
-    raise ValueError("unhandled type: %s" % type(value))
+    raise ValueError("unhandled type: %s, %s" % (type(value), value))
 
 
 class EscapeKeywords(object):

@@ -75,3 +75,20 @@ class Connection(object):
             RaiseValue('db_type must be eighter "mysql" or "pgsql"')
 
         return url_tpl % auth
+
+
+class Session(object):
+
+    def __init__(self, args):
+        self.args = args
+
+    def __enter__(self):
+        self.connection = Connection(self.args)
+        self.connection.connect()
+        return self.connection
+
+    def __exit__(self, type, value, traceback):
+        self.connection.disconnect()
+
+
+

@@ -1,6 +1,14 @@
 from witchcraft.combinators import execute, query, template
 
 
+prefix_dict = {                                                                    
+    'pgsql': 'psql',                                                            
+    'mysql': 'mysql',                                                              
+    'oracle': 'oracle',                                                            
+    'mssql': 'mssql',                                                              
+}
+     
+
 def find_keys(dps):                                                                
     keys = set()                                                                   
                                                                                    
@@ -10,38 +18,43 @@ def find_keys(dps):
     return keys
 
 
-def create_table(connection, schema_name, table_table, fields, primary_keys):
+def create_table(connection, schema_name, table_name, fields, primary_keys):
 
     columns = fields.items()
     prefix = prefix_dict.get(connection.database_type)
-
-    create_stmt = sql_tpl('%s_create_table' % prefix, dict(columns=columns,
-                                                           schema_name=schema_name,
-                                                           table_name=table_name,
-                                                           primary_keys=primary_keys)
-
-    execute(connection, create_stmt)
+    execute(connection, template('%s_create_table' % prefix, 
+                            dict(columns=columns,
+                                 schema_name=schema_name,
+                                 table_name=table_name,
+                                 primary_keys=primary_keys)))
 
 
-def prepare_table(connection, schema_name, table_table, data_points, primary_keys):
+def prepare_table(connection, schema_name, table_name, data_points, primary_keys):
 
+    fields = data_points[0].fields
     prefix = prefix_dict.get(connection.database_type)
 
     required_columns = find_keys(data_points)
     discovery_table_name = table_name
 
-    if database_config['type'] == 'oracle':
+    if connection.database_type == 'oracle':
         discovery_table_name = table_name.upper()
 
-    result = execute(connection, template('%s_discover_columns' % prefix,
+    result = query(connection, template('%s_discover_columns' % prefix,
                                      dict(schema_name=schema_name,
                                           table_name=discovery_table_name)))
 
     discovered_columns = set(map(lambda r: r.column_name.lower(), result))
     
     if len(discovered_columns) == 0:
-        fields = data_points[0].fields
-        create_table(connection, schema_name, table_table, fields, primary_keys)
+        create_table(connection, schema_name, table_name, fields, primary_keys)
+
+        result = query(connection, template('%s_discover_columns' % prefix,
+                                     dict(schema_name=schema_name,
+                                          table_name=discovery_table_name)))
+
+        discovered_columns = set(map(lambda r: r.column_name.lower(), result))
+
 
     else:
         discovered_pkeys = filter(lambda r: r.is_pkey, result)
@@ -70,5 +83,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                             dict(schema_name=schema_name,
                                  table_name=table_name,
                                  column_names=column_names,
-                                 data_points=data_points),
-                            connection.database_type)
+                                 columns=data_points[0].fields.items(),
+                                 data_points=data_points,
+                                 primary_keys=primary_keys),
+                            connection.database_type))
