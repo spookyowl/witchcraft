@@ -151,9 +151,6 @@ class TupleJSONEncoder(JSONEncoder):
             return JSONEncoder.default(self, obj)
 
 
-
-
-
 class BaseItem(object):
     """Base class for all scraped items."""
     pass

@@ -138,6 +138,7 @@ def group_by(data, key_func, *operations):
 
         memo[key] = value
 
+    print 'memo',memo
     return memo
 
 
@@ -145,7 +146,6 @@ def group_by_columns(data, key_names, *operations):
     operations = list(operations)
 
     def post_process(d):
-        #if isinstance(d,list):
         return ommit_columns(d, key_names)
 
     operations.insert(0, post_process)
@@ -345,8 +345,11 @@ def intersect(left, right, combine_fn):
     else:
         right_keys = right
 
+    print left_keys, right_keys
     intersection = left_keys & right_keys
     
+    print 'intersection', intersection
+
     result = {}
 
     if combine_fn is not None:
@@ -394,8 +397,16 @@ def join_by_columns(left, right, left_keys, right_keys):
     left = group_by_columns(left, left_keys)
     right = group_by_columns(right, right_keys)
 
-    result = intersect(left, right, merge)
-    return flatten(result)
+    for k,lv in left.items():
+        rv = right.get(k)
+
+        if rv is not None:
+           left[k] = merge(lv, rv, k)
+ 
+    #print 'left', left
+    #print 'right', right
+    #result = intersect(left, right, merge)
+    return flatten(left)
 
 
 #TODO: join_by_fn
