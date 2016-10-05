@@ -138,7 +138,6 @@ def group_by(data, key_func, *operations):
 
         memo[key] = value
 
-    print 'memo',memo
     return memo
 
 
@@ -189,7 +188,6 @@ def aggregate(iterable, *aggregators):
 
 
 def aggregate_list_of(iterable, extract_key):
-    #print 'L', iterable
     result = list(map(lambda i: i[extract_key], iterable))
     return result
 
@@ -345,11 +343,8 @@ def intersect(left, right, combine_fn):
     else:
         right_keys = right
 
-    print left_keys, right_keys
     intersection = left_keys & right_keys
     
-    print 'intersection', intersection
-
     result = {}
 
     if combine_fn is not None:
@@ -403,7 +398,7 @@ def join_by_columns(left, right, left_keys, right_keys):
         if rv is not None:
            left[k] = merge(lv, rv, k)
  
-    #print 'left', left
+    #rint 'left', left
     #print 'right', right
     #result = intersect(left, right, merge)
     return flatten(left)

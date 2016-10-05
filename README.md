@@ -7,7 +7,7 @@
 (filter-by )
 
 TODO:
- - zisti ako to ma byt s tym intersect ako ma zachovavat mena klucov atd.
+ - [done] zisti ako to ma byt s tym intersect ako ma zachovavat mena klucov atd.
  - implementuj v select kombinatore premenovavanie klucov
  - sprav TupleSet a TupleDict a obom daj vestky aplikovatelne kobinatory ako member
    funkcie a boli z nich monady
