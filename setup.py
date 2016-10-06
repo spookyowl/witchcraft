@@ -3,11 +3,11 @@ from setuptools import setup
 
 setup(
     name="witchcraft",
-    version="0.2",
+    version="0.2.1",
     description='',
     author='Peter Facka',
-    author_email='pfacka@trackingwire.com',
-    url='https://github.com/trackingwire/witchcraft',
+    author_email='pfacka@spookyowl.com',
+    url='https://github.com/spookyowl/witchcraft',
     packages=[
         'witchcraft',
     ],
@@ -18,7 +18,7 @@ setup(
         'hy>=0.11.1',
         'pyparsing>=2.1.1'
     ],
-    provides=['witchcraft (0.2)'],
+    provides=['witchcraft (0.2.1)'],
     include_package_data=True,
     classifiers=[
       'Development Status :: 3 - Alpha',
