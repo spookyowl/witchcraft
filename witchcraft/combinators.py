@@ -155,15 +155,25 @@ def columns(data, columns):
     return to_tuple(data, columns)
 
 
-#TODO: allow renaming of columns
 def select_columns(data, columns):
+    dest_column_names = []
+    src_column_names = []    
 
-    tuple_type = build_tuple_type(*columns)
+    for c in columns:
+        
+        if isinstance(c, list) or isinstance(c, tuple):
+            src_column_names.append(c[0])
+            dest_column_names.append(c[1])
+        else:
+            src_column_names.append(c)
+            dest_column_names.append(c)
+
+    tuple_type = build_tuple_type(*dest_column_names)
 
     if isinstance(data, list):
-        return map(tuple_type, data)
+        return map(lambda i: tuple_type(i, src_column_names), data)
     else:
-        return tuple_type(data)
+        return tuple_type(data, src_column_names)
 
 
 def ommit_columns(tuple_set, columns):

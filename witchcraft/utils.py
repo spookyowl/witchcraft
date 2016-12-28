@@ -2,8 +2,14 @@ from pprint import pformat
 from UserDict import DictMixin
 from collections import OrderedDict
 
-from json import JSONEncoder
-import json
+
+# Use the same json implementation as itsdangerous because Flask does that
+# and we depend on it
+try:                                                                               
+    from itsdangerous import simplejson as _json                                
+except ImportError:                                                             
+    from itsdangerous import json as _json                                      
+
 
 def convert_column_name(column_name):
     return column_name.lower().replace(' ','_')
@@ -11,21 +17,34 @@ def convert_column_name(column_name):
 
 class TupleMeta(object):
 
-    def __init__(self, d=None, **kw):
+    def __init__(self, input_data=None, select_vector=None, **kw_args):
         buf = {}
-        
-        if d is None:
-            d = kw
 
-        elif isinstance(d, list):
-            d = dict(d)
+        if input_data is None:
+            input_data = kw_args
 
+        elif isinstance(input_data, list):
+            input_data = dict(input_data)
 
-        for k,v in d.items():
+        elif not (isinstance(input_data, dict) or isinstance(input_data, TupleMeta)):
+            raise ValueError('input must be either of type dict or list')
+
+        if select_vector is not None and len(select_vector) != 0:
+
+            if len(select_vector) > len(self.__slots__):
+                raise ValueError('Source select vector is too long')
+        else:
+            select_vector = self.__slots__
+
+        for k,v in input_data.items():
             buf[convert_column_name(k)] = v 
         
-        for k in self.__slots__:
-            setattr(self, k, buf.get(k))
+        for i, slot_key in enumerate(self.__slots__):
+
+            if i < len(select_vector):
+                setattr(self, slot_key, buf.get(select_vector[i]))
+            else:
+                setattr(self, slot_key, buf.get(slot_key))
 
     def __getitem__(self, k):
         if isinstance(k, int):
@@ -62,7 +81,7 @@ class TupleMeta(object):
         return False
 
     def __repr__(self):
-        d = self.asdict()
+        d = self.items()
         return 'Tuple %s' % d.__repr__()
 
     def __hash__(self):
@@ -124,7 +143,7 @@ class TupleMeta(object):
         return result
 
     def asjson(self):
-        return json.dumps(self.asdict(), cls=TupleJSONEncoder)
+        return _json.dumps(self.asdict(), cls=TupleJSONEncoder)
 
 
 def build_tuple_type(*columns):
@@ -140,8 +159,11 @@ def build_tuple_type(*columns):
     return Tuple
 
 
-class TupleJSONEncoder(JSONEncoder):
+class TupleJSONEncoder(_json.JSONEncoder):
     
+    #def __init__(self, *args, **kw):
+    #    super(TupleJSONEncoder, self).__init__(*args, **kw)
+
     def default(self, obj):
 
         if isinstance(obj, TupleMeta):
@@ -234,10 +256,10 @@ class DictItem(DictMixin, BaseItem):
                 self[key] = value.encode('utf-8', 'ignore')
             
             elif isinstance(value, list):
-                self[key] = json.dumps(value)
+                self[key] = _json.dumps(value)
 
             elif isinstance(value, dict):
-                self[key] = json.dumps(value)
+                self[key] = _json.dumps(value)
 
     def select(self, keys):
         result = []
