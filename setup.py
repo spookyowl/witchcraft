@@ -18,7 +18,7 @@ setup(
         'hy>=0.11.1',
         'pyparsing>=2.1.1'
     ],
-    provides=['witchcraft (0.2.5'],
+    provides=['witchcraft (0.2.5)'],
     include_package_data=True,
     classifiers=[
       'Development Status :: 3 - Alpha',
@@ -28,6 +28,7 @@ setup(
       'Operating System :: MacOS :: MacOS X',
       'Operating System :: POSIX',
       'Programming Language :: Python :: 2.7',
+      'Programming Language :: Python :: 3.3',
       'License :: OSI Approved :: MIT License',
       ],
 )
