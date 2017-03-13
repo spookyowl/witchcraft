@@ -1,6 +1,16 @@
 from pprint import pformat
-from UserDict import DictMixin
 from collections import OrderedDict
+from datetime import datetime
+
+try:
+    from UserDict import DictMixin
+except ImportError:
+    from collections import MutableMapping as DictMixin
+
+try:
+    text = unicode
+except NameError:
+    text = str 
 
 
 # Use the same json implementation as itsdangerous because Flask does that
@@ -61,8 +71,8 @@ class TupleMeta(object):
             stored_value = self[0]
 
             if isinstance(value, type(stored_value)) \
-                or (isinstance(stored_value, unicode) and isinstance(value, str)) \
-                or (isinstance(stored_value, str) and isinstance(value, unicode)):
+                or (isinstance(stored_value, text) and isinstance(value, str)) \
+                or (isinstance(stored_value, str) and isinstance(value, text)):
 
                 return stored_value == value
        
@@ -161,16 +171,17 @@ def build_tuple_type(*columns):
 
 class TupleJSONEncoder(_json.JSONEncoder):
     
-    #def __init__(self, *args, **kw):
-    #    super(TupleJSONEncoder, self).__init__(*args, **kw)
-
     def default(self, obj):
 
-        if isinstance(obj, TupleMeta):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+
+        asdict_op = getattr(obj, "asdict", None)
+        if callable(asdict_op):
             return obj.asdict()
 
         else:
-            return JSONEncoder.default(self, obj)
+            return _json.JSONEncoder.default(self, obj)
 
 
 class BaseItem(object):
@@ -243,6 +254,12 @@ class DictItem(DictMixin, BaseItem):
     def copy(self):
         return self.__class__(self)
 
+    def __len__(self):
+        return len(self.fields)
+
+    def __iter__(self):
+        return self
+
     def load(self, source):
         
         for key in self.fields.keys():
@@ -252,7 +269,7 @@ class DictItem(DictMixin, BaseItem):
             if value is None:
                 self[key] = None
 
-            elif isinstance(value, unicode):
+            elif isinstance(value, text):
                 self[key] = value.encode('utf-8', 'ignore')
             
             elif isinstance(value, list):
@@ -260,6 +277,10 @@ class DictItem(DictMixin, BaseItem):
 
             elif isinstance(value, dict):
                 self[key] = _json.dumps(value)
+            
+            else:
+                self[key] = value
+
 
     def select(self, keys):
         result = []
@@ -278,3 +299,82 @@ class DictItem(DictMixin, BaseItem):
 class Item(DictItem):
 
     __metaclass__ = ItemMeta
+
+
+class seekable(object):
+    
+    def __init__(self, iterable):
+        self.pos = 0
+        self.buf = []
+        self.buf_iterator = iter(self.buf)
+        self.disabled = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.disabled = True
+
+        if self.pos < len(self.buf):
+            b=self.buf[self.pos]
+            self.pos+=1
+            return b
+        else:
+            return next(self.iterator)
+
+    def __getitem__(self, index):
+
+        # getting an item is still posible but we are rather raising error
+        # to prevent incorrect usage
+        if not self.disabled:
+
+            if index < len(self.buf):
+                return self.buf[index]
+            else:
+                self.seek(index)
+                return self.buf[index]
+
+        else:
+            raise ValueError('Seeking disabled iteration already started')
+
+    def seek(self, index):
+
+        if not self.disabled:
+
+            for i in range(index-(len(self.buf)-1)):
+                self.buf.append(next(self.iterator))
+                    
+        else:
+            raise ValueError('Seeking disabled iteration already started')
+
+    def is_empty(self):
+        try:
+            self.seek(1)
+            return False
+
+        except StopIteration:
+            return True
+     
+    def has_one_element(self):
+        test_first = False
+        test_second = False
+
+        try:
+            self.seek(1)
+            test_first = True
+
+        except StopIteration:
+            test_first = False
+
+        try:
+            self.seek(2)
+            test_first = False
+
+        except StopIteration:
+            test_first = True
+
+        return test_first and not test_second
+
+    def get_buffer_iterator(self):
+        return iter(self.buf)
+

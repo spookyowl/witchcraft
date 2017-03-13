@@ -5,12 +5,28 @@ import os
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date
-from itertools import imap
+
+try:
+    import itertools.imap as map
+except ImportError:
+    pass
+
+
+try:
+    text = unicode
+except NameError:
+    text = str 
+
+try:
+    long
+except NameError:
+    long = int
 
 from hy.lex import parser, lexer
 from hy import HyList
 from hy.importer import hy_eval
 from psycopg2.extensions import QuotedString as SqlString
+
 
 
 reserved_words = []
@@ -24,6 +40,7 @@ with open(rw_path, 'r') as rwfd:
 def string_to_quoted_expr(s):
   return HyList(parser.parse(lexer.lex(s)))
 
+    
 
 def quote_param(value, dialect='psql'):
 
@@ -39,15 +56,19 @@ def quote_param(value, dialect='psql'):
     if isinstance(value, Decimal):
         return str(value)
 
+    if isinstance(value, text):
+        value = value.replace('%','%%')
+        value = value.replace('\x00',' ')
+        sql_string_value = SqlString(value)
+        sql_string_value.encoding = 'utf-8'
+        return sql_string_value.getquoted().decode("utf-8")
+
     if isinstance(value, str):
         value = value.replace('%','%%')
         value = value.replace('\x00',' ')
-        return SqlString(value).getquoted().decode('utf8')
-
-    if isinstance(value, unicode):
-        value = value.replace('%','%%')
-        value = value.replace('\x00',' ')
-        return SqlString(value).getquoted()
+        sql_string_value = SqlString(value)
+        sql_string_value.encoding = 'utf-8'
+        return sql_string_value.getquoted().decode("utf-8")
 
     if isinstance(value, datetime):
         if dialect == 'oracle':
@@ -67,10 +88,8 @@ def quote_param(value, dialect='psql'):
         try:
             return "(" + ','.join(map(quote_func, value)) + ")"
         except Exception as e:
-            print e 
+            print(e)
             raise ValueError(value)
-
-
 
     raise ValueError("unhandled type: %s, %s" % (type(value), value))
 
@@ -87,7 +106,7 @@ class EscapeKeywords(object):
     def __call__(self, value):
 
         if value in reserved_words:
-            return unicode(self.quote + value + self.quote)
+            return text(self.quote + value + self.quote)
         else:
             return value
 
@@ -109,7 +128,7 @@ class Parameter(object):
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
 
-        if isinstance(value, list) or isinstance(value, imap):
+        if isinstance(value, list) or isinstance(value, map):
             value = ', '.join(list(map(conv_func, value)))
         else:
             value = conv_func(value)
@@ -137,7 +156,7 @@ class EvalExpression(object):
         if result is None:
             result = ''
 
-        elif isinstance(result, list) or isinstance(result, imap):
+        elif isinstance(result, list) or isinstance(result, map):
             result = ', '.join(list(map(conv_func, result)))
         else:
             result = conv_func(result)
@@ -176,9 +195,9 @@ class Template(object):
         for e in vec:
 
             if isinstance(e, str):
-                acc += unicode(e)
+                acc += text(e)
 
             else:
-                acc += unicode(e.evaluate(context, self.dialect))
+                acc += text(e.evaluate(context, self.dialect))
 
         return acc

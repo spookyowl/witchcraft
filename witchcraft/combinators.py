@@ -1,5 +1,6 @@
 import itertools
 import os.path
+from operator import itemgetter
 
 from witchcraft.utils import build_tuple_type
 from witchcraft.template import Template
@@ -44,7 +45,7 @@ def dict_merge(a, b):
 def query(connection, sql_query):
     result_proxy = connection.execute(sql_query)
     result_type = build_tuple_type(*result_proxy.keys())
-    result = map(lambda r: result_type(dict(r)), result_proxy)
+    result = list(map(lambda r: result_type(dict(r)), result_proxy))
     result_proxy.close()
     return result
  
@@ -103,7 +104,7 @@ def filter(data, func):
 
 
 def each(data, func):
-    return __buildin_map(func, data)
+    return list(__buildin_map(func, data))
 
 
 def filter_by(data, key_name, value):
@@ -171,7 +172,7 @@ def select_columns(data, columns):
     tuple_type = build_tuple_type(*dest_column_names)
 
     if isinstance(data, list):
-        return map(lambda i: tuple_type(i, src_column_names), data)
+        return list(map(lambda i: tuple_type(i, src_column_names), data))
     else:
         return tuple_type(data, src_column_names)
 
@@ -185,7 +186,7 @@ def ommit_columns(tuple_set, columns):
         result_type = build_tuple_type(*keys)
         return result_type(item.select(keys))
         
-    return map(ommit_fn, tuple_set)
+    return list(map(ommit_fn, tuple_set))
 
 
 def aggregate(iterable, *aggregators):
@@ -269,7 +270,7 @@ def flatten_dict(data, column_names):
 
 def flatten(mapping):
 
-    keys = mapping.keys()
+    keys = list(mapping.keys())
     values = mapping.values()
 
     def find_non_empty(v):
@@ -284,11 +285,11 @@ def flatten(mapping):
 
     if isinstance(value, list):
         list_value = True
-        value_keys = value[0].keys()
+        value_keys = list(value[0].keys())
 
     else:
         list_value = False
-        value_keys = value.keys()
+        value_keys = list(value.keys())
 
     keys = keys[0].keys() + value_keys
 
@@ -423,4 +424,9 @@ def to_tuple(data, keys=None):
     if keys is None:
         keys = data[0].keys()
     tuple_type = build_tuple_type(*keys)
-    return map(tuple_type, data)
+    return list(map(tuple_type, data))
+
+
+def sort_by_columns(iterable, *columns):
+    return sorted(iterable, key=itemgetter(*columns))
+ 

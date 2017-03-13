@@ -10,11 +10,11 @@ prefix_dict = {
      
 
 def find_keys(dps):                                                                
-    keys = set()                                                                   
-                                                                                   
-    for i in dps:                                                                  
-        keys |= set(i.keys())                                                      
-                                                                                   
+    keys = set()
+
+    for i in dps:
+        keys |= set(i.keys())
+
     return keys
 
 
@@ -86,4 +86,17 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                                  columns=data_points[0].fields.items(),
                                  data_points=data_points,
                                  primary_keys=primary_keys),
+                            connection.database_type))
+
+
+def insert_data(connection, schema_name, table_name, data_points):
+    prefix = prefix_dict.get(connection.database_type)
+    column_names = list(find_keys(data_points))
+
+    execute(connection, template('%s_insert' % prefix,
+                            dict(schema_name=schema_name,
+                                 table_name=table_name,
+                                 column_names=column_names,
+                                 columns=data_points[0].fields.items(),
+                                 data_points=data_points),
                             connection.database_type))
