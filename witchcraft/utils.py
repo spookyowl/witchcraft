@@ -269,6 +269,9 @@ class DictItem(DictMixin, BaseItem):
             if value is None:
                 self[key] = None
 
+            elif isinstance(value, str):
+                self[key] = value
+
             elif isinstance(value, text):
                 self[key] = value.encode('utf-8', 'ignore')
             
