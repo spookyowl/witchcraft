@@ -1,5 +1,6 @@
 SELECT
   columns.column_name AS column_name,
+  columns.data_type AS data_type,
   columns.character_maximum_length,
   columns.numeric_precision,
   columns.numeric_scale,

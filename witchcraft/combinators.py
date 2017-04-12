@@ -29,8 +29,9 @@ def set_query_path(path):
         __query_paths = path
 
     elif isinstance(path, str) or isinstance(path, unicode):
-        __query_paths = [path] 
+        __query_paths = [path]
 
+    __query_paths.append(os.path.join(base_path, 'queries'))
 
 def conv_symbol_name(s):
     s = s.lstrip(u'\ufdd0:')
@@ -83,10 +84,8 @@ def template(template_name, context = None, dialect = None):
                          template_name.replace('_', '-')]   
 
     path_pattern = itertools.product(__query_paths, filename_patterns)
-
     for t in path_pattern:
         file_path = os.path.join(t[0], t[1])
-
         if os.path.isfile(file_path):
 
             with open(file_path) as query_file:

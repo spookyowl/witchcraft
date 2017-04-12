@@ -199,6 +199,7 @@ class ItemMeta(type):
     def __new__(mcs, class_name, bases, attrs):
         fields = OrderedDict()
         new_attrs = OrderedDict()
+
         for n, v in attrs.iteritems():
             if isinstance(v, Field):
                 fields[n] = v
@@ -262,9 +263,15 @@ class DictItem(DictMixin, BaseItem):
 
     def load(self, source):
         
-        for key in self.fields.keys():
+        if isinstance(source, list):
+            getter = lambda c,k: source[c]
 
-            value = source.get(key)
+        elif isinstance(source, dict):
+            getter = lambda c,k: source[k]
+
+        for c, key in enumerate(self.fields.keys()):
+        
+            value = getter(c, key)
 
             if value is None:
                 self[key] = None
