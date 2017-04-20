@@ -197,13 +197,25 @@ def extract_number(number_str, decimal=None):
         else:
             return None
 
-    if len(groups) == 0 or len(groups[0]) == 0:
+    if len(groups) == 0:
         return None
+
+    elif len(groups[0]) == 0:
+
+        if len(''.join(groups)) == 0:
+            return None
+
+        number = Decimal('%s0.%s' % (sign, ''.join(groups)))
+        precision = len(number.as_tuple().digits)
+        scale = - number.as_tuple().exponent
+        input_type = InputType('numeric', dict(precision=precision, scale=scale))
+        return number, input_type
 
     elif len(groups) == 1:
         return int(groups[0]), InputType('int')
 
     elif len(groups) > 1:
+        print(groups)
         number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
         precision = len(number.as_tuple().digits)
         scale = - number.as_tuple().exponent
@@ -387,3 +399,7 @@ def get_data_types(header, data, current_types=None):
         result_data.append(result_row)
 
     return result_data, current_types
+
+
+if __name__ == '__main__':
+    print(extract_number(',0000'))
