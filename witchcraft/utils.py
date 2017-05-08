@@ -1,6 +1,6 @@
 from pprint import pformat
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, date
 
 try:
     from UserDict import DictMixin
@@ -169,11 +169,16 @@ def build_tuple_type(*columns):
     return Tuple
 
 
+
+
 class TupleJSONEncoder(_json.JSONEncoder):
     
     def default(self, obj):
 
         if isinstance(obj, datetime):
+            return obj.isoformat()
+
+        if isinstance(obj, date):
             return obj.isoformat()
 
         asdict_op = getattr(obj, "asdict", None)
@@ -283,10 +288,10 @@ class DictItem(DictMixin, BaseItem):
                 self[key] = value.encode('utf-8', 'ignore')
             
             elif isinstance(value, list):
-                self[key] = _json.dumps(value)
+                self[key] = _json.dumps(value, cls=TupleJSONEncoder)
 
             elif isinstance(value, dict):
-                self[key] = _json.dumps(value)
+                self[key] = _json.dumps(value, cls=TupleJSONEncoder)
             
             else:
                 self[key] = value
