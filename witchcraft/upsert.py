@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import string
 from decimal import Decimal
 import csv
@@ -268,7 +269,7 @@ def detect_dayfirst(dates):
 def parse_csv(input_data, delimiter=';', quotechar='"'):
     sniffer = csv.Sniffer()
     try:
-        dialect = sniffer.sniff(input_data)
+        dialect = sniffer.sniff(input_data, delimiters=',;\t')
     except:
         csv.register_dialect('dlb_excel', delimiter=delimiter, quotechar=quotechar)
         dialect = csv.get_dialect('dlb_excel')
@@ -292,9 +293,10 @@ def detect_type(value, current_type=None):
 
         try:
             result = dateutil_parse(value)
-            return result, InputType('timestamp', dayfirst=None, last_value=result)
+            #TODO: handle timezones
+            return result, InputType('timestamp', dict(dayfirst=None, last_value=result))
 
-        except:
+        except Exception as e:
             pass
                     
         if value.lower() in ['true', 't', 'yes', 'y']:
@@ -361,6 +363,7 @@ def detect_type(value, current_type=None):
             return False, InputType('bool')
 
     elif current_type.name.startswith('timestamp'):
+        #TODO: handle timezones
         result = re.findall('\d+|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec', value.lower())
 
         if len(result) < 3 or len(result) > 8:
@@ -379,6 +382,7 @@ def detect_type(value, current_type=None):
 
     else:
         return value, current_type
+
 
 def preprocess_csv_data(input_data):
     data = parse_csv(input_data)
@@ -437,7 +441,14 @@ def get_data_types(header, data, current_types=None):
 
         result_row = []
         for i, value in enumerate(row):
-            v, current_types[header[i]] = detect_type(value, current_types.get(header[i]))
+            try:
+                v, current_types[header[i]] = detect_type(value, current_types.get(header[i]))
+
+            except:
+                print(header,i, len(header))
+                print(value)
+                print(row)
+
             result_row.append(v)
             
         result_data.append(result_row)
@@ -446,4 +457,4 @@ def get_data_types(header, data, current_types=None):
 
 
 if __name__ == '__main__':
-    print(extract_number(',0000'))
+    print(detect_type('2017-05-17 12:27:25.294589'))
