@@ -268,6 +268,7 @@ class DictItem(DictMixin, BaseItem):
 
     def load(self, source):
         
+        print(source)
         if isinstance(source, list):
             getter = lambda c,k: source[c]
 

@@ -31,14 +31,14 @@ def insert(connection, schema_name, table_name, data_points, primary_keys):
     insert_data(connection, schema_name, table_name, data_points)
 
 
-def replace(connection, schema_name, table_name, data_points):
+def replace(connection, schema_name, table_name, data_points, primary_keys = None):
     data_points = list(data_points)
     delete_data(connection, schema_name, table_name)
     prepare_table(connection, schema_name, table_name, data_points, [])
     insert_data(connection, schema_name, table_name, data_points)
 
 
-def append_history(connection, schema_name, table_name, data_points):
+def append_history(connection, schema_name, table_name, data_points, primary_keys = None):
 
     max_version = get_max_version(connection, schema_name, table_name)
     

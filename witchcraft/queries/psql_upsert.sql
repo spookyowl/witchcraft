@@ -59,3 +59,5 @@ ON 1 = 1
    primary_keys "")
 
 WHERE :table_name.:(get primary_keys 0) IS NULL;
+
+DROP TABLE data_update;
