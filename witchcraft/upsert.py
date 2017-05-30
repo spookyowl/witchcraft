@@ -1,20 +1,21 @@
+# -*- coding: utf-8 -*-
 import string
 from decimal import Decimal
 import csv
-
+import re
 from witchcraft.combinators import execute, query, template
 from witchcraft.dateutil.parser import parse as dateutil_parse
 
 
-prefix_dict = {                                                                    
-    'pgsql': 'psql',                                                            
-    'mysql': 'mysql',                                                              
-    'oracle': 'oracle',                                                            
-    'mssql': 'mssql',                                                              
+prefix_dict = {
+    'pgsql': 'psql',
+    'mysql': 'mysql',
+    'oracle': 'oracle',
+    'mssql': 'mssql', 
 }
      
 
-def find_keys(dps):                                                                
+def find_keys(dps):
     keys = set()
 
     for i in dps:
@@ -23,6 +24,16 @@ def find_keys(dps):
     return keys
 
 
+#TODO: get rid of side effect
+def remove_metadata(data_points):
+    
+    for item in data_points:
+        if '_updated_at' in item:
+            del item['_updated_at']
+
+        if '_created_at' in item:
+            del item['_created_at']
+        
 def create_table(connection, schema_name, table_name, fields, primary_keys):
 
     columns = fields.items()
@@ -98,6 +109,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                                  primary_keys=primary_keys),
                             connection.database_type))
 
+
 def insert_data(connection, schema_name, table_name, data_points):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
@@ -122,11 +134,13 @@ def delete_data(connection, schema_name, table_name):
                             connection.database_type))
 
 
-def discover_columns(connection):
+def discover_columns(connection, schema_name, table_name):
     prefix = prefix_dict.get(connection.database_type)
     result = query(connection, template('%s_discover_columns' % prefix,
                                  dict(schema_name=schema_name,
-                                      table_name=discovery_table_name)))
+                                      table_name=table_name)))
+
+    return result
 
 
 def get_max_version(connection, schema_name, table_name):
@@ -215,7 +229,6 @@ def extract_number(number_str, decimal=None):
         return int(groups[0]), InputType('int')
 
     elif len(groups) > 1:
-        print(groups)
         number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
         precision = len(number.as_tuple().digits)
         scale = - number.as_tuple().exponent
@@ -253,12 +266,12 @@ def detect_dayfirst(dates):
          None
 
 
-def parse_csv(input_data):
+def parse_csv(input_data, delimiter=';', quotechar='"'):
     sniffer = csv.Sniffer()
     try:
-        dialect = sniffer.sniff(input_data)
+        dialect = sniffer.sniff(input_data, delimiters=',;\t')
     except:
-        csv.register_dialect('dlb_excel', delimiter=';', quotechar='"')
+        csv.register_dialect('dlb_excel', delimiter=delimiter, quotechar=quotechar)
         dialect = csv.get_dialect('dlb_excel')
 
     data = input_data
@@ -269,6 +282,9 @@ def parse_csv(input_data):
 
 def detect_type(value, current_type=None):
 
+    if value is None:
+        return None, current_type       
+
     if current_type is None:
         extract_result = extract_number(value)
 
@@ -277,9 +293,10 @@ def detect_type(value, current_type=None):
 
         try:
             result = dateutil_parse(value)
-            return result, InputType('timestamp', dayfirst=None, last_value=result)
+            #TODO: handle timezones
+            return result, InputType('timestamp', dict(dayfirst=None, last_value=result))
 
-        except:
+        except Exception as e:
             pass
                     
         if value.lower() in ['true', 't', 'yes', 'y']:
@@ -294,6 +311,10 @@ def detect_type(value, current_type=None):
         return value, InputType('text')
 
     elif current_type.name == 'numeric':
+
+        if value == '' or value is None:
+            return None, current_type
+
         extract_result = extract_number(value)
 
         # not a number
@@ -321,14 +342,18 @@ def detect_type(value, current_type=None):
             
         return value, InputType('numeric', dict(precision=precision, scale=scale))
 
-    elif current_type.name == 'int':
-        extract_result = extract_number(value)
+    elif current_type.name == 'int' or current_type.name == 'integer':
+        if value == '' or value is None:
+            return None, current_type
 
-        # not a number
-        if extract_result is None:
-            return value, InputType('text')
+        else:
+            extract_result = extract_number(value)
 
-        return extract_result
+            # not a number
+            if extract_result is None:
+                return value, InputType('text')
+
+            return extract_result
         
     elif current_type.name == 'bool':
         if value.lower() in ['true', 't', 'yes', 'y']:
@@ -337,10 +362,11 @@ def detect_type(value, current_type=None):
         elif value.lower() in ['false', 'f', 'no', 'n']:
             return False, InputType('bool')
 
-    elif current_type.name == 'timestamp':
+    elif current_type.name.startswith('timestamp'):
+        #TODO: handle timezones
         result = re.findall('\d+|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec', value.lower())
 
-        if len(result) < 3 or len(result) > 7:
+        if len(result) < 3 or len(result) > 8:
             return value, InputType('text')
 
         try:
@@ -354,6 +380,9 @@ def detect_type(value, current_type=None):
 
         return value, InputType('timestamp', dayfirst=dayfirst, last_value=value)
 
+    else:
+        return value, current_type
+
 
 def preprocess_csv_data(input_data):
     data = parse_csv(input_data)
@@ -362,22 +391,42 @@ def preprocess_csv_data(input_data):
         raise ValueError('Not enough data')
 
     header = data[0]
+    formated_header = []
+    collisions = {}
+    generic_name_counter = 0
 
-    def format_header_column(column):
+    for column in header:
+
         letters_and_digits = string.ascii_lowercase + string.digits
         buf = ''
 
-        for char in column.lower():
+        if len(column) > 0:
+            for i, char in enumerate(column.lower()):
 
-            if char not in letters_and_digits:
-                buf += '_'
+                if i == 0 and char in string.digits:
+                    buf += '_'
 
-            else:
-                buf += char
+                elif char not in letters_and_digits:
+                    buf += '_'
 
-        return buf
+                else:
+                    buf += char
 
-    formated_header = list(map(format_header_column, header))
+            # check for collisions
+            if buf in formated_header:
+                suffix = collisions.get(buf)
+
+                if suffix is not None:
+                    collisions[buf] = suffix+1 
+                    buf = buf + '_' +  str(suffix+1)
+
+                else:
+                    buf += '_1'
+        else:
+            generic_name_counter += 1
+            buf = 'column_%i' % generic_name_counter
+
+        formated_header.append(buf)
     
     return formated_header, header, data[1:]
 
@@ -393,7 +442,6 @@ def get_data_types(header, data, current_types=None):
         result_row = []
         for i, value in enumerate(row):
             v, current_types[header[i]] = detect_type(value, current_types.get(header[i]))
-
             result_row.append(v)
             
         result_data.append(result_row)
@@ -402,4 +450,4 @@ def get_data_types(header, data, current_types=None):
 
 
 if __name__ == '__main__':
-    print(extract_number(',0000'))
+    print(detect_type('2017-05-17 12:27:25.294589'))

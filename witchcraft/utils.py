@@ -276,7 +276,6 @@ class DictItem(DictMixin, BaseItem):
             getter = lambda c,k: source[k]
 
         for c, key in enumerate(self.fields.keys()):
-        
             value = getter(c, key)
 
             if value is None:

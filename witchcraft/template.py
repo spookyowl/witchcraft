@@ -114,7 +114,6 @@ class EscapeKeywords(object):
 class Parameter(object):
 
     def __init__(self, token):
-        #print 'Parameter', token
         self.quote = (token[0][0] == '?')
         self.name = token[0][1]
 
