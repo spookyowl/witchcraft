@@ -53,8 +53,9 @@ def query(connection, sql_query):
 
 def execute(connection, sql_query):
     result_proxy = connection.execute(sql_query)
+    row_count = result_proxy.rowcount
     result_proxy.close()
-    return result_proxy
+    return row_count
 
 
 def template(template_name, context = None, dialect = None):

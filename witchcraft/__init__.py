@@ -1,10 +1,14 @@
+from collections import namedtuple
 from witchcraft.utils import seekable
 from witchcraft.upsert import prepare_table, upsert_data, insert_data
 from witchcraft.upsert import delete_data, get_max_version
 from witchcraft.combinators import query, template
 
 
-#TODO: allow using serial primary key without defining value in data set
+LoadResult = ('LoadResult', ['received','inserted', 'updated', 'deleted', 'update_started_at', 'finished_at'])
+
+
+#TODO: allow using serial primary key without defining value in data set - solves: e.g. writing crawling/scraping results
 #TODO: combine schema_name + table_name into one argument
 
 def upsert(connection, schema_name, table_name, data_points, primary_keys=None):
@@ -16,9 +20,17 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None):
 
     if primary_keys is None:
         primary_keys = []
-
+    
     primary_keys = prepare_table(connection, schema_name, table_name, data_points, primary_keys)
-    upsert_data(connection, schema_name, table_name, data_points, primary_keys)
+
+    if len(primary_keys) == 0:
+        raise ValueError('Upsert method requires table to have primary keys')
+
+    update_started_at = connection.get_current_timestamp()
+    inserted, updated = upsert_data(connection, schema_name, table_name, data_points, primary_keys)
+    finished_at = connection.get_current_timestamp()
+
+    return LoadResult(len(data_points), inserted, updated, 0, update_started_at, finished_at)
 
 
 def insert(connection, schema_name, table_name, data_points, primary_keys):
@@ -29,19 +41,26 @@ def insert(connection, schema_name, table_name, data_points, primary_keys):
         return
 
     prepare_table(connection, schema_name, table_name, data_points, primary_keys)
-    insert_data(connection, schema_name, table_name, data_points)
+    update_started_at = connection.get_current_timestamp()
+    inserted = insert_data(connection, schema_name, table_name, data_points)
+    finished_at = connection.get_current_timestamp()
+
+    return LoadResult(len(data_points), inserted, 0, 0, update_started_at, finished_at)
 
 
 def replace(connection, schema_name, table_name, data_points, primary_keys=None):
-    print ('replace', primary_keys)
-
     if primary_keys is None:
         primary_keys = []
         
     data_points = list(data_points)
     prepare_table(connection, schema_name, table_name, data_points, primary_keys)
-    delete_data(connection, schema_name, table_name)
-    insert_data(connection, schema_name, table_name, data_points)
+
+    update_started_at = connection.get_current_timestamp()
+    deleted = delete_data(connection, schema_name, table_name)
+    inserted = insert_data(connection, schema_name, table_name, data_points)
+    finished_at = connection.get_current_timestamp()
+
+    return LoadResult(len(data_points), inserted, 0, deleted, update_started_at, finished_at)
 
 
 def append_history(connection, schema_name, table_name, data_points, primary_keys=None):
@@ -59,4 +78,9 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
         primary_keys = []
 
     prepare_table(connection, schema_name, table_name, data_points, primary_keys)
-    insert_data(connection, schema_name, table_name, data_points)
+
+    update_started_at = connection.get_current_timestamp()
+    inserted = insert_data(connection, schema_name, table_name, data_points)
+    finished_at = connection.get_current_timestamp()
+
+    return LoadResult(len(data_points), inserted, 0, 0, update_started_at, finished_at)
