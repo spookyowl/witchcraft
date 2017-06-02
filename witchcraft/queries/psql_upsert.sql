@@ -23,6 +23,7 @@ VALUES ?(map
            data-points)
 ;
 
+-- LOCK TABLE :schema_name.:table_name IN EXCLUSIVE MODE;
 
 UPDATE :schema_name.:table_name
   SET 
@@ -41,7 +42,6 @@ WHERE
 ;
 
 
--- LOCK TABLE :schema_name.:table_name IN EXCLUSIVE MODE;
 
 INSERT INTO :schema_name.:table_name
   (:column_names)

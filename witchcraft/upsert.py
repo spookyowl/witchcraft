@@ -78,7 +78,7 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
         if len(primary_keys) != 0:
 
             if set(primary_keys) != set(discovered_pkeys):
-                raise ValueError('Primary keys in destination table are not matching')
+                raise ValueError('Primary keys in destination table are not matching with defined primary keys')
 
             primary_keys = discovered_pkeys
 
@@ -99,40 +99,74 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
 
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
+    connection.begin()
 
-    execute(connection, template('%s_upsert' % prefix,
-                            dict(schema_name=schema_name,
-                                 table_name=table_name,
-                                 column_names=column_names,
-                                 columns=data_points[0].fields.items(),
-                                 data_points=data_points,
-                                 primary_keys=primary_keys),
-                            connection.database_type))
+    execute(connection, template('%s_upsert_load' % prefix,
+                        dict(schema_name=schema_name,
+                             table_name=table_name,
+                             column_names=column_names,
+                             columns=data_points[0].fields.items(),
+                             data_points=data_points,
+                             primary_keys=primary_keys),
+                        connection.database_type))
+
+    updated = execute(connection, template('%s_upsert_update' % prefix,
+                        dict(schema_name=schema_name,
+                             table_name=table_name,
+                             column_names=column_names,
+                             columns=data_points[0].fields.items(),
+                             data_points=data_points,
+                             primary_keys=primary_keys),
+                        connection.database_type))
+
+    inserted = query(connection, template('%s_upsert_insert' % prefix,
+                        dict(schema_name=schema_name,
+                             table_name=table_name,
+                             column_names=column_names,
+                             columns=data_points[0].fields.items(),
+                             data_points=data_points,
+                             primary_keys=primary_keys),
+                        connection.database_type))
+    connection.commit()
+
+    return (inserted[0].count, updated)
 
 
 def insert_data(connection, schema_name, table_name, data_points):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
 
-    #TODO: use SqlSession insert directly
-    execute(connection, template('%s_insert' % prefix,
+    inserted = query(connection, 
+                   template('%s_insert' % prefix,
                             dict(schema_name=schema_name,
                                  table_name=table_name,
                                  column_names=column_names,
                                  columns=data_points[0].fields.items(),
                                  data_points=data_points),
                             connection.database_type))
+    return inserted[0].count
 
 
 def delete_data(connection, schema_name, table_name):
     prefix = prefix_dict.get(connection.database_type)
 
-    #TODO: use SqlSession delete directly
-    execute(connection, template('%s_delete' % prefix,
-                            dict(schema_name=schema_name,
-                                 table_name=table_name),
-                            connection.database_type))
+    result = query(connection, template('%s_discover_columns' % prefix,
+                                        dict(schema_name=schema_name,
+                                             table_name=table_name)))
 
+    if len(result) == 0:
+        return 0
+
+
+    #TODO: use SqlSession.delete directly?
+    deleted_count = execute(connection,
+                            template('%s_delete' % prefix,
+                                     dict(schema_name=schema_name,
+                                          table_name=table_name),
+                                          connection.database_type))
+
+    return deleted_count
+   
 
 def discover_columns(connection, schema_name, table_name):
     prefix = prefix_dict.get(connection.database_type)
@@ -378,7 +412,7 @@ def detect_type(value, current_type=None):
         if current_type.params.get('dayfirst') is None:
             dayfirst = detect_dayfirst(current_type.params['last_value'])
 
-        return value, InputType('timestamp', dayfirst=dayfirst, last_value=value)
+        return value, InputType('timestamp', dict(dayfirst=dayfirst, last_value=value))
 
     else:
         return value, current_type
