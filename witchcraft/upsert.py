@@ -327,6 +327,7 @@ def detect_type(value, current_type=None):
 
         if new_type.name == 'numeric':
             # enlarge precision to hold new value if necessary
+            
             precision = max(current_type.params['precision'], new_type.params['precision'])
             scale = max(current_type.params['scale'], new_type.params['scale'])
 

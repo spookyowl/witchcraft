@@ -2,8 +2,8 @@ SELECT
   columns.column_name AS column_name,
   columns.data_type AS data_type,
   columns.character_maximum_length,
-  columns.numeric_precision,
-  columns.numeric_scale,
+  COALESCE(columns.numeric_precision, 30) AS numeric_precision,
+  COALESCE(columns.numeric_scale, 6) AS numeric_scale,
   columns.ordinal_position,
   (constraints.constraint_type IS NOT NULL) AS is_pkey
 
