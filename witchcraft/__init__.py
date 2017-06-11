@@ -5,7 +5,7 @@ from witchcraft.upsert import delete_data, get_max_version
 from witchcraft.combinators import query, template
 
 
-LoadResult = ('LoadResult', ['received','inserted', 'updated', 'deleted', 'update_started_at', 'finished_at'])
+LoadResult = namedtuple('LoadResult', ['received','inserted', 'updated', 'deleted', 'update_started_at', 'finished_at'])
 
 
 #TODO: allow using serial primary key without defining value in data set - solves: e.g. writing crawling/scraping results
