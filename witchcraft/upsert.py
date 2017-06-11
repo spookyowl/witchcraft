@@ -410,7 +410,8 @@ def detect_type(value, current_type=None):
             return value, InputType('text')
         
         if current_type.params.get('dayfirst') is None:
-            dayfirst = detect_dayfirst(current_type.params['last_value'])
+            #FIXME: dayfirst = detect_dayfirst(current_type.params['last_value'])
+            dayfirst = detect_dayfirst(value)
 
         return value, InputType('timestamp', dict(dayfirst=dayfirst, last_value=value))
 
