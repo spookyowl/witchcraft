@@ -169,8 +169,6 @@ def build_tuple_type(*columns):
     return Tuple
 
 
-
-
 class TupleJSONEncoder(_json.JSONEncoder):
     
     def default(self, obj):
@@ -313,6 +311,24 @@ class DictItem(DictMixin, BaseItem):
 class Item(DictItem):
 
     __metaclass__ = ItemMeta
+
+
+def read_batch(iterator, batch_size=None):
+    
+    if batch_size is None:
+        batch_size = 10000
+
+    result = []
+
+    for i in range(batch_size):
+        
+        try:
+            result.append(next(iterator))
+
+        except StopIteration:
+            return result
+
+    return result 
 
 
 class seekable(object):

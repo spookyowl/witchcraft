@@ -2,6 +2,7 @@
 
 import re
 import os
+import binascii
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date
@@ -43,9 +44,13 @@ def string_to_quoted_expr(s):
     
 
 def quote_param(value, dialect='psql'):
+    #print(str(value)[0:70], type(value))
 
     if value is None:
         return "NULL"
+
+    if isinstance(value, bytes):
+        return "decode('%s', 'hex')::bytea" % binascii.hexlify(value).decode('ascii')
 
     if isinstance(value, int) or isinstance(value, long):
         return str(value)
@@ -57,6 +62,7 @@ def quote_param(value, dialect='psql'):
         return str(value)
 
     if isinstance(value, text):
+        #value = value.replace(':',"\:")
         value = value.replace('%','%%')
         value = value.replace('\x00',' ')
         sql_string_value = SqlString(value)
@@ -64,6 +70,7 @@ def quote_param(value, dialect='psql'):
         return sql_string_value.getquoted().decode("utf-8")
 
     if isinstance(value, str):
+        #value = value.replace(':',"\:")
         value = value.replace('%','%%')
         value = value.replace('\x00',' ')
         sql_string_value = SqlString(value)
