@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS data_update;
+
 CREATE TEMP TABLE data_update (
   :(map
      (fn [column]

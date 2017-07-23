@@ -26,10 +26,10 @@ def set_query_path(path):
     global __query_paths
 
     if isinstance(path, list):
-        __query_paths = path
+        __query_paths = path.extend(__query_paths)
 
     elif isinstance(path, str) or isinstance(path, unicode):
-        __query_paths = [path]
+        __query_paths.insert(0, path)
 
     __query_paths.append(os.path.join(base_path, 'queries'))
 

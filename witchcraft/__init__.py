@@ -1,86 +1,183 @@
 from collections import namedtuple
-from witchcraft.utils import seekable
+from datetime import datetime
+from witchcraft.utils import read_batch
 from witchcraft.upsert import prepare_table, upsert_data, insert_data
 from witchcraft.upsert import delete_data, get_max_version
 from witchcraft.combinators import query, template
 
 
-LoadResult = namedtuple('LoadResult', ['received','inserted', 'updated', 'deleted', 'update_started_at', 'finished_at'])
-
+LoadResult = namedtuple('LoadResult', ['received', 'inserted', 'updated', 'deleted', 'update_started_at', 'finished_at'])
 
 #TODO: allow using serial primary key without defining value in data set - solves: e.g. writing crawling/scraping results
 #TODO: combine schema_name + table_name into one argument
 
 def upsert(connection, schema_name, table_name, data_points, primary_keys=None):
-    #TODO: use seekable from utils and call prepare table (to create new columns) in batches (10000)
-    data_points = list(data_points)
+    read_total = 0
+    inserted_total = 0
+    updated_total = 0
 
-    if len(data_points) == 0:
-        return
+    if isinstance(data_points, list):
+        iterator = iter(data_points)
+    else:
+        iterator = data_points
+
+    first_batch = read_batch(iterator)
+
+    if len(first_batch) == 0:
+        now = connection.get_current_timestamp()
+        return LoadResult(0, 0, 0, 0, now, now)
 
     if primary_keys is None:
         primary_keys = []
-    
-    primary_keys = prepare_table(connection, schema_name, table_name, data_points, primary_keys)
+
+    primary_keys = prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
 
     if len(primary_keys) == 0:
         raise ValueError('Upsert method requires table to have primary keys')
 
     update_started_at = connection.get_current_timestamp()
-    inserted, updated = upsert_data(connection, schema_name, table_name, data_points, primary_keys)
+
+    inserted, updated = upsert_data(connection, schema_name, table_name, first_batch, primary_keys)
+    read_total += len(first_batch)
+    inserted_total += inserted
+    updated_total += updated_total
+
+    while True:
+        batch = read_batch(iterator)
+
+        if len(batch) > 0:
+            primary_keys = prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            inserted, updated = upsert_data(connection, schema_name, table_name, batch, primary_keys)
+            read_total += len(batch)
+            inserted_total += inserted
+            updated_total += updated_total
+
+        else:
+            break
+
     finished_at = connection.get_current_timestamp()
 
-    return LoadResult(len(data_points), inserted, updated, 0, update_started_at, finished_at)
+    return LoadResult(read_total, inserted_total, updated_total, 0, update_started_at, finished_at)
 
 
 def insert(connection, schema_name, table_name, data_points, primary_keys):
-    #TODO: use seekable from utils and call prepare table (to create new columns) in batches (10000)
-    data_points = list(data_points)
+    read_total = 0
+    inserted_total = 0
 
-    if len(data_points) == 0:
-        return
+    if isinstance(data_points, list):
+        iterator = iter(data_points)
+    else:
+        iterator = data_points
 
-    prepare_table(connection, schema_name, table_name, data_points, primary_keys)
+    first_batch = read_batch(iterator)
+
+    if len(first_batch) == 0:
+        now = connection.get_current_timestamp()
+        return LoadResult(0, 0, 0, 0, now, now)
+
+    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
     update_started_at = connection.get_current_timestamp()
-    inserted = insert_data(connection, schema_name, table_name, data_points)
+
+    inserted_total += insert_data(connection, schema_name, table_name, first_batch)
+    read_total += len(first_batch)
+
+    while True:
+        batch = read_batch(iterator)
+        if len(batch) > 0:
+            prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            inserted_total += insert_data(connection, schema_name, table_name, batch)
+            read_total += len(batch)
+        else:
+            break
+
     finished_at = connection.get_current_timestamp()
 
-    return LoadResult(len(data_points), inserted, 0, 0, update_started_at, finished_at)
+    return LoadResult(read_total, inserted_total, 0, 0, update_started_at, finished_at)
 
 
 def replace(connection, schema_name, table_name, data_points, primary_keys=None):
+    read_total = 0
+    inserted_total = 0
+    deleted_total = 0
+
     if primary_keys is None:
         primary_keys = []
-        
-    data_points = list(data_points)
-    prepare_table(connection, schema_name, table_name, data_points, primary_keys)
+     
+    if isinstance(data_points, list):
+        iterator = iter(data_points)
+    else:
+        iterator = data_points
+
+    first_batch = read_batch(iterator)
+
+    if len(first_batch) == 0:
+        now = connection.get_current_timestamp()
+        return LoadResult(0, 0, 0, 0, now, now)
+
+    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
 
     update_started_at = connection.get_current_timestamp()
-    deleted = delete_data(connection, schema_name, table_name)
-    inserted = insert_data(connection, schema_name, table_name, data_points)
+    deleted_total = delete_data(connection, schema_name, table_name)
+    inserted_total += insert_data(connection, schema_name, table_name, first_batch)
+    read_total += len(first_batch)
+
+    while True:
+        batch = read_batch(iterator)
+        if len(batch) > 0:
+            prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            inserted_total += insert_data(connection, schema_name, table_name, batch)
+            read_total += len(batch)
+        else:
+            break
+
     finished_at = connection.get_current_timestamp()
 
-    return LoadResult(len(data_points), inserted, 0, deleted, update_started_at, finished_at)
+    return LoadResult(read_total, inserted_total, 0, deleted_total, update_started_at, finished_at)
 
 
 def append_history(connection, schema_name, table_name, data_points, primary_keys=None):
-
+    read_total = 0
+    inserted_total = 0
     max_version = get_max_version(connection, schema_name, table_name)
-    
+
     def add_history_column(item):
         item.add_field('version', psql_type='int')
         item['version'] = max_version
         return item  
 
-    data_points = list(map(add_history_column, data_points))
+    if isinstance(data_points, list):
+        iterator = iter(data_points)
+    else:
+        iterator = data_points
+
+    first_batch = read_batch(iterator)
+    first_batch = list(map(add_history_column, first_batch))
+
+    if len(first_batch) == 0:
+        now = connection.get_current_timestamp()
+        return LoadResult(0, 0, 0, 0, now, now)
 
     if primary_keys is None:
         primary_keys = []
 
-    prepare_table(connection, schema_name, table_name, data_points, primary_keys)
+    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
 
     update_started_at = connection.get_current_timestamp()
-    inserted = insert_data(connection, schema_name, table_name, data_points)
+    inserted_total += insert_data(connection, schema_name, table_name, first_batch)
+    read_total += len(first_batch)
+
+    while True:
+        batch = read_batch(iterator)
+        batch = list(map(add_history_column, batch))
+
+        if len(batch) > 0:
+            prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            inserted_total += insert_data(connection, schema_name, table_name, batch)
+            read_total += len(batch)
+        else:
+            break
+
+
     finished_at = connection.get_current_timestamp()
 
-    return LoadResult(len(data_points), inserted, 0, 0, update_started_at, finished_at)
+    return LoadResult(read_total, inserted_total, 0, 0, update_started_at, finished_at)

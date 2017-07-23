@@ -303,7 +303,7 @@ def detect_dayfirst(dates):
 def parse_csv(input_data, delimiter=';', quotechar='"'):
     sniffer = csv.Sniffer()
     try:
-        dialect = sniffer.sniff(input_data, delimiters=',;\t')
+        dialect = sniffer.sniff(input_data, delimiters=';,\t')
     except:
         csv.register_dialect('dlb_excel', delimiter=delimiter, quotechar=quotechar)
         dialect = csv.get_dialect('dlb_excel')
