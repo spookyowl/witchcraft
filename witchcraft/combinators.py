@@ -110,9 +110,17 @@ def each(data, func):
 def filter_by(data, key_name, value):
     
     def filter_fn(item):
-        return item['key_name'] == value
+        return item[key_name] == value
     
     return __buildin_filter(filter_fn, data) 
+
+
+def filter_in(data, key_name, values):
+
+    def filter_fn(item):
+        return item[key_name] in values
+
+    return __buildin_filter(filter_fn, data)
 
 
 def group_by(data, key_func, *operations):
