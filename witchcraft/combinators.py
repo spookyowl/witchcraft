@@ -299,7 +299,7 @@ def flatten_dict(data, column_names):
         return to_tuple(data, column_names)
 
 
-def flatten(mapping):
+def flatten(mapping, default_keys=None):
 
     keys = list(mapping.keys())
     values = mapping.values()
@@ -327,7 +327,10 @@ def flatten(mapping):
 
     keys = keys[0].keys() + value_keys
 
-    ResultType = build_tuple_type(*keys)
+    if default_keys is None:
+        ResultType = build_tuple_type(*keys)
+    else:
+        ResultType = build_tuple_type(*default_keys)
 
     result = []
 
@@ -426,7 +429,7 @@ def join_by_columns(left, right, left_keys, right_keys):
     def merge(left, right, k):
         
         if len(right) == 0:
-            return tuple_type(left)
+            return [tuple_type(left)]
 
         result = []
 
@@ -450,7 +453,7 @@ def join_by_columns(left, right, left_keys, right_keys):
     #rint 'left', left
     #print 'right', right
     #result = intersect(left, right, merge)
-    return flatten(left)
+    return flatten(left, list(mrk)+list(mlk))
 
 
 #TODO: join_by_fn
