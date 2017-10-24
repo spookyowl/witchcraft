@@ -6,6 +6,7 @@ import binascii
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date
+from witchcraft.utils import coalesce
 
 try:
     import itertools.imap as map
@@ -35,7 +36,7 @@ rw_path = os.path.join(os.path.dirname(__file__), 'reserved_psql.txt')
 
 
 with open(rw_path, 'r') as rwfd:
-    reserved_words = rwfd.read().split('\n')
+    reserved_words = rwfd.read().split(',\n')
 
 
 def string_to_quoted_expr(s):
@@ -150,11 +151,11 @@ class EvalExpression(object):
 
     def evaluate(self, context, dialect='psql'):
         ctx = dict(globals())
-        ctx['esckwd'] = EscapeKeywords(dialect) 
+        ctx['esckwd'] = EscapeKeywords(dialect)
+        ctx['coalesce'] = coalesce
         ctx.update(context)
         result = string_to_quoted_expr(self.expression)
         result = hy_eval(result, ctx, 'inline_hy')[0]
-
         quote_func = lambda p: quote_param(p, dialect)
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
@@ -172,7 +173,7 @@ class EvalExpression(object):
 
 class Template(object):
 
-    substatement = Combine(OneOrMore(White() | Regex("[^?:']+") | Literal("::") | QuotedString("'", '\\', None, False, False)))
+    substatement = Combine(OneOrMore(White() | Regex("[^?:'\"]+") | Literal("::") | QuotedString("'", '\\', None, False, False) | QuotedString('"', '\\', None, False, False)))
 
     named_parameter = Group((Literal(':') | Literal('?')) + Word(alphas+"_-", alphas+nums+"_-"))
     named_parameter.setParseAction(lambda s,l,t: Parameter(t))

@@ -4,6 +4,7 @@ from operator import itemgetter
 
 from witchcraft.utils import build_tuple_type
 from witchcraft.template import Template
+from witchcraft.utils import coalesce
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,18 +34,25 @@ def set_query_path(path):
 
     __query_paths.append(os.path.join(base_path, 'queries'))
 
+
 def conv_symbol_name(s):
     s = s.lstrip(u'\ufdd0:')
     return s.replace('-','_')
 
 
 def dict_merge(a, b):
-    return dict(a.items() + b.items())
+    c = b.copy()
+    c.update(a)
+    return c
   
 
 #TODO: think about how to make query lazy
 def query(connection, sql_query):
-    result_proxy = connection.execute(sql_query)
+    if connection.connection is not None:
+        result_proxy = connection.connection.execute(sql_query)
+    else:
+        result_proxy = connection.execute(sql_query)
+
     result_type = build_tuple_type(*result_proxy.keys())
     result = list(map(lambda r: result_type(dict(r)), result_proxy))
     result_proxy.close()
@@ -232,6 +240,7 @@ def _flatten(keys, items, column_names):
         #if len(first_values) and (isinstance(first_values, dict) or isinstance(first_values, OrderedDict)):
         #    items = flatten_all(items, column_names[len(keys):])
         #else:
+        #print('first_values',first_values)
         #if not (isinstance(first_values, tuple) or isinstance(first_values, list)):
         #    items = (items, )
 
@@ -242,17 +251,30 @@ def _flatten(keys, items, column_names):
         else:
             items = (items, )
 
-    #print items
+    if not (isinstance(items, tuple) or isinstance(items, list)):
+        items = (items, )
+    
     for i in items:
-        if not isinstance(i, dict):
-            #print i
+
+        # can be converted to dictionary
+        asdict_op = getattr(i, "asdict", None)
+        if callable(asdict_op):
             i = i.asdict()
+        
+        # is dictionary
+        elif isinstance(i, dict):
+            pass
+
+        #is value
+        else:
+            i = {'value': i}
+
         result.append(dict(key_part, **i))
 
     return result
     
 
-#TODO: really required???
+#TODO: really required??? - No, itemize_dict is sufficient
 def flatten_dict(data, column_names):
     result = []
 
@@ -263,17 +285,18 @@ def flatten_dict(data, column_names):
             if len(i) == 0:
                 continue
 
-            key = key.values()
             #print key
             if not (isinstance(key, tuple) or isinstance(key, list)):
                 key = (key,)
+            else:
+                key = key.values()
 
             result.extend(_flatten(key, i, column_names))
 
-        return result
+        return to_tuple(result, column_names)
 
     else:
-        return data
+        return to_tuple(data, column_names)
 
 
 def flatten(mapping):
@@ -290,8 +313,11 @@ def flatten(mapping):
         return []
 
     value = find_non_empty(values)
+    
+    if value is None:
+        return []
 
-    if isinstance(value, list):
+    elif isinstance(value, list):
         list_value = True
         value_keys = list(value[0].keys())
 
@@ -325,8 +351,12 @@ def itemize_dict(mapping, columns):
     for key, value in mapping.items():
         item = {}
 
+        #key is not dictionary
+        if not isinstance(key, dict):
+            key = {'value': key}
+
         for i, c in enumerate(columns[:-1]):
-            item[c] = key.values()[i]
+            item[c] = list(key.values())[i]
 
         item[columns[-1]] = value
         result.append(result_type(item))
@@ -334,7 +364,7 @@ def itemize_dict(mapping, columns):
     return result
 
 
-def complement(left, right, func):
+def complement(left, right, combine_fn):
     left_keys = set(left.keys())
     right_keys = set(right.keys())
 
@@ -388,7 +418,7 @@ def intersect(left, right, combine_fn):
 
 def join_by_columns(left, right, left_keys, right_keys):
 
-    mlk = set(left[0].keys()) - set(left_keys)
+    mlk = set(left[0].keys())
     mrk = set(right[0].keys()) - set(right_keys)
 
     tuple_type = build_tuple_type(list(mrk)+list(mlk))
@@ -424,8 +454,8 @@ def join_by_columns(left, right, left_keys, right_keys):
 
 
 #TODO: join_by_fn
-def union():
-    pass
+def union(iterables):
+    return itertools.chain.from_iterable(iterables)
 
 
 def to_tuple(data, keys=None):
@@ -437,4 +467,7 @@ def to_tuple(data, keys=None):
 
 def sort_by_columns(iterable, *columns):
     return sorted(iterable, key=itemgetter(*columns))
- 
+
+
+def in_list(search_list):
+    return lambda v: v in search_list

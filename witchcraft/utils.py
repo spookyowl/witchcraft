@@ -1,6 +1,7 @@
 from pprint import pformat
 from collections import OrderedDict
 from datetime import datetime, date
+from decimal import Decimal
 
 try:
     from UserDict import DictMixin
@@ -22,8 +23,15 @@ except ImportError:
 
 
 def convert_column_name(column_name):
-    return column_name.lower().replace(' ','_')
-
+    #TODO: only A-z0-9_ allowd sanitize with regexp, throw exception
+    column_name = column_name.lower()
+    column_name = column_name.replace(' ','_')
+    return column_name.replace('-','_')
+ 
+def coalesce(*values):
+    for v in values:
+        if v is not None:
+            return v  
 
 class TupleMeta(object):
 
@@ -113,7 +121,7 @@ class TupleMeta(object):
             except AttributeError:
                 return default
 
-        return None
+        return default
 
     def keys(self):
         return self.__slots__
@@ -178,6 +186,9 @@ class TupleJSONEncoder(_json.JSONEncoder):
 
         if isinstance(obj, date):
             return obj.isoformat()
+
+        if isinstance(obj, Decimal):
+            return str(obj)
 
         asdict_op = getattr(obj, "asdict", None)
         if callable(asdict_op):
