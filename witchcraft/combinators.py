@@ -4,7 +4,7 @@ from operator import itemgetter
 
 from witchcraft.utils import build_tuple_type
 from witchcraft.template import Template
-from witchcraft.utils import coalesce
+from witchcraft.utils import coalesce, chainlist
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,7 +48,7 @@ def dict_merge(a, b):
 
 #TODO: think about how to make query lazy
 def query(connection, sql_query):
-    if connection.connection is not None:
+    if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
         result_proxy = connection.connection.execute(sql_query)
     else:
         result_proxy = connection.execute(sql_query)
@@ -224,7 +224,7 @@ def aggregate_first_row(iterable):
 
 
 def aggregate_first_of(iterable, extract_key):
-    return iterable[0][extract_key]
+    return list(iterable)[0][extract_key]
 
 
 def _flatten(keys, items, column_names):
@@ -355,7 +355,8 @@ def itemize_dict(mapping, columns):
         item = {}
 
         #key is not dictionary
-        if not isinstance(key, dict):
+        
+        if not callable(getattr(key,'values', None)):
             key = {'value': key}
 
         for i, c in enumerate(columns[:-1]):
@@ -427,17 +428,20 @@ def join_by_columns(left, right, left_keys, right_keys):
     tuple_type = build_tuple_type(list(mrk)+list(mlk))
 
     def merge(left, right, k):
-        
-        if len(right) == 0:
-            return [tuple_type(left)]
-
         result = []
 
-        for li in left:
-            
-            for ri in right:
-                r = tuple_type(dict(li.items() + ri.items()))
+        if len(right) == 0:
+
+            for li in left:
+                r = tuple_type(li.items() + k.items())
                 result.append(r)
+
+        else:
+            for li in left:
+                
+                for ri in right:
+                    r = tuple_type(dict(ri.items() + li.items() + k.items()))
+                    result.append(r)
             
         return result
 
@@ -450,9 +454,6 @@ def join_by_columns(left, right, left_keys, right_keys):
         if rv is not None:
            left[k] = merge(lv, rv, k)
  
-    #rint 'left', left
-    #print 'right', right
-    #result = intersect(left, right, merge)
     return flatten(left, list(mrk)+list(mlk))
 
 

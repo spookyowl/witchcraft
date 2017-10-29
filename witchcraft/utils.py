@@ -2,6 +2,7 @@ from pprint import pformat
 from collections import OrderedDict
 from datetime import datetime, date
 from decimal import Decimal
+import itertools
 
 try:
     from UserDict import DictMixin
@@ -27,11 +28,17 @@ def convert_column_name(column_name):
     column_name = column_name.lower()
     column_name = column_name.replace(' ','_')
     return column_name.replace('-','_')
- 
+
+
 def coalesce(*values):
     for v in values:
         if v is not None:
             return v  
+
+
+def chainlist(iter_of_lists):
+    return list(itertools.chain(*iter_of_lists))
+
 
 class TupleMeta(object):
 
