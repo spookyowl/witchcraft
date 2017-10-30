@@ -1,6 +1,16 @@
 import itertools
 import os.path
 from operator import itemgetter
+from threading import Thread
+from threading import Semaphore
+import traceback
+
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
+
+
 
 from witchcraft.utils import build_tuple_type
 from witchcraft.template import Template
@@ -475,3 +485,39 @@ def sort_by_columns(iterable, *columns):
 
 def in_list(search_list):
     return lambda v: v in search_list
+
+
+def parallel_map(func, maxthreads, items):
+    semaphore = Semaphore(0)
+
+    def worker():
+
+        while True:
+            item = q.get()
+
+            try:
+                import os
+                func(item)
+
+            except:
+                print(traceback.format_exc())
+    
+            q.task_done()
+            semaphore.release()
+
+    q = Queue(maxthreads)
+
+    for i in range(maxthreads):
+         t = Thread(target=worker)
+         t.daemon = True
+         t.start()
+
+    for c,item in enumerate(iter(items)):
+
+        if c > 10000000:
+            print("Safety stop condition reached")
+            break
+
+        q.put(item)
+
+    q.join()

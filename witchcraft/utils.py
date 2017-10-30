@@ -296,6 +296,9 @@ class DictItem(DictMixin, BaseItem):
             if value is None:
                 self[key] = None
 
+            elif (isinstance(value, str) or isinstance(value, text)) and value == '' and self.fields[key].get('psql_type') in ('text', 'bytea'):
+                self[key] = None
+            
             elif isinstance(value, str):
                 self[key] = value
 

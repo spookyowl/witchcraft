@@ -467,7 +467,10 @@ def preprocess_csv_data(input_data):
     return formated_header, header, data[1:]
 
 
-def get_data_types(header, data, current_types=None):
+def get_data_types(header, data, current_types=None, detect_type_func=None):
+    
+    if detect_type_func is None:
+        detect_type_func = detect_type
 
     if current_types is None:
         current_types = {}
