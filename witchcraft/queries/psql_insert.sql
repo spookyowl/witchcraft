@@ -8,7 +8,7 @@ WITH inserted_rows AS (
               (list
                (map
                   (fn [cn]
-                     (get dp cn))
+                     (.get dp cn))
                 column_names)))
              data-points)
   RETURNING 1

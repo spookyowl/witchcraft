@@ -2,6 +2,7 @@ from pprint import pformat
 from collections import OrderedDict
 from datetime import datetime, date
 from decimal import Decimal
+import itertools
 
 try:
     from UserDict import DictMixin
@@ -27,11 +28,17 @@ def convert_column_name(column_name):
     column_name = column_name.lower()
     column_name = column_name.replace(' ','_')
     return column_name.replace('-','_')
- 
+
+
 def coalesce(*values):
     for v in values:
         if v is not None:
             return v  
+
+
+def chainlist(iter_of_lists):
+    return list(itertools.chain(*iter_of_lists))
+
 
 class TupleMeta(object):
 
@@ -289,6 +296,9 @@ class DictItem(DictMixin, BaseItem):
             if value is None:
                 self[key] = None
 
+            elif (isinstance(value, str) or isinstance(value, text)) and value == '' and self.fields[key].get('psql_type') in ('text', 'bytea'):
+                self[key] = None
+            
             elif isinstance(value, str):
                 self[key] = value
 

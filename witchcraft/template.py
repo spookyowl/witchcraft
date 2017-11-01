@@ -6,7 +6,8 @@ import binascii
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date
-from witchcraft.utils import coalesce
+from witchcraft.utils import coalesce, chainlist
+
 
 try:
     import itertools.imap as map
@@ -28,7 +29,6 @@ from hy.lex import parser, lexer
 from hy import HyList
 from hy.importer import hy_eval
 from psycopg2.extensions import QuotedString as SqlString
-
 
 
 reserved_words = []
@@ -153,6 +153,7 @@ class EvalExpression(object):
         ctx = dict(globals())
         ctx['esckwd'] = EscapeKeywords(dialect)
         ctx['coalesce'] = coalesce
+        ctx['chainlist'] = chainlist
         ctx.update(context)
         result = string_to_quoted_expr(self.expression)
         result = hy_eval(result, ctx, 'inline_hy')[0]
@@ -164,6 +165,7 @@ class EvalExpression(object):
             result = ''
 
         elif isinstance(result, list) or isinstance(result, map):
+            #result = list(result)
             result = ', '.join(list(map(conv_func, result)))
         else:
             result = conv_func(result)
