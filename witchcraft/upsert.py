@@ -194,7 +194,7 @@ def get_max_version(connection, schema_name, table_name):
 
     result = query(connection, tpl)
 
-    if len(result) > 0:
+    if len(result) > 0 and result[0].version is not None:
         return result[0].version+1
     else:
         return 1
@@ -467,7 +467,10 @@ def preprocess_csv_data(input_data):
     return formated_header, header, data[1:]
 
 
-def get_data_types(header, data, current_types=None):
+def get_data_types(header, data, current_types=None, detect_type_func=None):
+
+    if detect_type_func is None:
+        detect_type_func = detect_type
 
     if current_types is None:
         current_types = {}
@@ -477,7 +480,7 @@ def get_data_types(header, data, current_types=None):
 
         result_row = []
         for i, value in enumerate(row):
-            v, current_types[header[i]] = detect_type(value, current_types.get(header[i]))
+            v, current_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
             result_row.append(v)
             
         result_data.append(result_row)
