@@ -480,7 +480,7 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
 
         result_row = []
         for i, value in enumerate(row):
-            v, current_types[header[i]] = detect_type(value, current_types.get(header[i]))
+            v, current_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
             result_row.append(v)
             
         result_data.append(result_row)
