@@ -524,6 +524,7 @@ def parallel_map(func, maxthreads, items):
 
 
 def distinct(iterable, *columns):
+
     keys = set()    
 
     def ffn(item):
@@ -535,10 +536,12 @@ def distinct(iterable, *columns):
             if cv is not None:
                 key.add(cv)
 
+        key = tuple(key)
+
         if key not in keys:
             keys.add(key)
             return True
         
         return False
 
-    return __buildin_filter(iterable, ffn)
+    return __buildin_filter(ffn, iterable)
