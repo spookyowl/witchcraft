@@ -144,6 +144,8 @@ def insert_data(connection, schema_name, table_name, data_points):
                                  columns=data_points[0].fields.items(),
                                  data_points=data_points),
                             connection.database_type))
+
+    connection.commit()
     return inserted[0].count
 
 

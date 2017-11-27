@@ -3,6 +3,8 @@ from collections import OrderedDict
 from datetime import datetime, date
 from decimal import Decimal
 import itertools
+import os
+base_path = os.path.dirname(os.path.abspath(__file__))
 
 try:
     from UserDict import DictMixin
@@ -429,3 +431,26 @@ class seekable(object):
     def get_buffer_iterator(self):
         return iter(self.buf)
 
+
+__query_paths = ['./', './queries', './templates', os.path.join(base_path, 'queries')]
+
+def find_query_template(template_name):
+
+    if not template_name.endswith('.sql'):
+        template_name += '.sql'
+
+    template_name = template_name.lstrip(u'\ufdd0:')
+
+    filename_patterns = [template_name,
+                         template_name.replace('-', '_'),
+                         template_name.replace('_', '-')]   
+
+    path_pattern = itertools.product(__query_paths, filename_patterns)
+    for t in path_pattern:
+        file_path = os.path.join(t[0], t[1])
+        if os.path.isfile(file_path):
+
+            with open(file_path) as query_file:
+                query_tpl = query_file.read()
+
+            return query_tpl

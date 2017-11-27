@@ -82,7 +82,7 @@ def quote_param(value, dialect='psql'):
         if dialect == 'oracle':
             return "timestamp '%s'" % value.isoformat(' ').split('.')[0]
         else:
-            return "'%s'" % value.isoformat(' ').split('.')[0]
+            return "'%s'" % value.isoformat(' ')
 
     if isinstance(value, date):
         return "'%s'" % value.isoformat()
@@ -175,7 +175,7 @@ class EvalExpression(object):
 
 class Template(object):
 
-    substatement = Combine(OneOrMore(White() | Regex("[^?:'\"]+") | Literal("::") | QuotedString("'", '\\', None, False, False) | QuotedString('"', '\\', None, False, False)))
+    substatement = Combine(OneOrMore(White() | Regex("[^?:'\"]+") | Literal('??') | Literal("::") | QuotedString("'", '\\', None, False, False) | QuotedString('"', '\\', None, False, False)))
 
     named_parameter = Group((Literal(':') | Literal('?')) + Word(alphas+"_-", alphas+nums+"_-"))
     named_parameter.setParseAction(lambda s,l,t: Parameter(t))
@@ -209,4 +209,6 @@ class Template(object):
             else:
                 acc += text(e.evaluate(context, self.dialect))
 
+        #escape replace
+        acc.replace('??','?')
         return acc

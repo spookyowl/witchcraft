@@ -3,6 +3,7 @@ import os.path
 from operator import itemgetter
 from threading import Thread
 from threading import Semaphore
+from itertools import islice
 import traceback
 
 try:
@@ -12,15 +13,13 @@ except ImportError:
 
 
 
-from witchcraft.utils import build_tuple_type
+from witchcraft.utils import build_tuple_type, find_query_template, __query_paths
 from witchcraft.template import Template
 from witchcraft.utils import coalesce, chainlist
 
-base_path = os.path.dirname(os.path.abspath(__file__))
 
 __buildin_filter = filter
 __buildin_map = map
-__query_paths = ['./', './queries', './templates', os.path.join(base_path, 'queries')]
 __template_cache = {}
 
 
@@ -69,6 +68,25 @@ def query(connection, sql_query):
     return result
  
 
+def batch_fetch(connection, sql_query, batch_size):
+    result_proxy = connection.execute(sql_query)
+
+    if result_proxy.returns_rows:
+        result_type = build_tuple_type(*result_proxy.keys())
+        result = map(lambda r: result_type(dict(r)), result_proxy)
+
+        while True:
+            chunk = list(islice(result, batch_size))
+
+            if len(chunk) != 0:
+                yield chunk
+            else:
+                break
+
+    result_proxy.close()
+
+
+
 def execute(connection, sql_query):
     result_proxy = connection.execute(sql_query)
     row_count = result_proxy.rowcount
@@ -93,28 +111,13 @@ def template(template_name, context = None, dialect = None):
         #TODO: handle dialect when teplate is used
         return Template(found, dialect).substitute(**conv_context)
 
-    if not template_name.endswith('.sql'):
-        template_name += '.sql'
+    query_tpl = find_query_template(template_name)
 
-    template_name = template_name.lstrip(u'\ufdd0:')
-
-    filename_patterns = [template_name,
-                         template_name.replace('-', '_'),
-                         template_name.replace('_', '-')]   
-
-    path_pattern = itertools.product(__query_paths, filename_patterns)
-    for t in path_pattern:
-        file_path = os.path.join(t[0], t[1])
-        if os.path.isfile(file_path):
-
-            with open(file_path) as query_file:
-                query_tpl = query_file.read()
-
-            __template_cache[cache_key] = query_tpl
-            #TODO: cache template instance
-            return Template(query_tpl, dialect).substitute(**conv_context)
-
-    raise ValueError('Template not found')
+    if query_tpl is not None:
+        __template_cache[cache_key] = query_tpl
+        return Template(query_tpl, dialect).substitute(**conv_context)
+    else:
+        raise ValueError('Template not found')
 
 
 def filter(data, func):
