@@ -22,6 +22,8 @@ __buildin_filter = filter
 __buildin_map = map
 __template_cache = {}
 
+base_path = os.path.dirname(os.path.abspath(__file__))
+
 
 def th(*operations):
     args = []
@@ -69,7 +71,10 @@ def query(connection, sql_query):
  
 
 def batch_fetch(connection, sql_query, batch_size):
-    result_proxy = connection.execute(sql_query)
+    if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
+        result_proxy = connection.connection.execute(sql_query)
+    else:
+        result_proxy = connection.execute(sql_query)
 
     if result_proxy.returns_rows:
         result_type = build_tuple_type(*result_proxy.keys())
@@ -88,7 +93,11 @@ def batch_fetch(connection, sql_query, batch_size):
 
 
 def execute(connection, sql_query):
-    result_proxy = connection.execute(sql_query)
+    if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
+        result_proxy = connection.connection.execute(sql_query)
+    else:
+        result_proxy = connection.execute(sql_query)
+
     row_count = result_proxy.rowcount
     result_proxy.close()
     return row_count

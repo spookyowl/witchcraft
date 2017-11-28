@@ -210,5 +210,4 @@ class Template(object):
                 acc += text(e.evaluate(context, self.dialect))
 
         #escape replace
-        acc.replace('??','?')
-        return acc
+        return acc.replace('??','?')
