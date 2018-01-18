@@ -290,10 +290,22 @@ class DictItem(DictMixin, BaseItem):
             getter = lambda c,k: source[c]
 
         elif isinstance(source, dict):
-            getter = lambda c,k: source[k]
+
+            def get_value(c, keys):
+
+                for k in keys:
+                    v = source.get(k)
+
+                    if v is not None:
+                        return v
+
+                return None
+
+            getter = get_value
 
         for c, key in enumerate(self.fields.keys()):
-            value = getter(c, key)
+            alt_keys = self.fields[key].get('source_names', [])
+            value = getter(c, [key] + alt_keys)
 
             if value is None:
                 self[key] = None

@@ -1,4 +1,6 @@
 -- LOCK TABLE :schema_name.:table_name IN EXCLUSIVE MODE;
+ANALYZE data_update;
+
 WITH inserted_rows AS (
 
   INSERT INTO :schema_name.:table_name

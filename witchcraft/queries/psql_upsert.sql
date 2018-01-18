@@ -9,6 +9,7 @@ CREATE TEMP TABLE data_update (
   )
 );
 
+ANALYZE data_update;
 
 INSERT INTO data_update
   (:column_names)
