@@ -131,7 +131,6 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None)
             break
 
     finished_at = connection.get_current_timestamp()
-
     return LoadResult(read_total, inserted_total, 0, deleted_total, update_started_at, finished_at)
 
 

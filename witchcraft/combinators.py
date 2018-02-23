@@ -409,7 +409,7 @@ def complement(left, right, combine_fn):
     return result
 
 
-def intersect(left, right, combine_fn):
+def intersect(left, right, combine_fn=None):
     left_keys = set(left.keys())
 
     if isinstance(right, dict):

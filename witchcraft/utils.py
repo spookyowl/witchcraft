@@ -285,23 +285,31 @@ class DictItem(DictMixin, BaseItem):
         return self
 
     def load(self, source):
-        
+        getter = None
+
+        def get_item_value(c, keys):
+
+            for k in keys:
+                v = source.get(k)
+
+                if v is not None:
+                    return v
+
+            return None
+
         if isinstance(source, list):
             getter = lambda c,k: source[c]
 
         elif isinstance(source, dict):
+            getter = get_item_value
 
-            def get_value(c, keys):
-
-                for k in keys:
-                    v = source.get(k)
-
-                    if v is not None:
-                        return v
-
-                return None
-
-            getter = get_value
+        else:
+            asdict_op = getattr(source, "asdict", None)
+            if callable(asdict_op):
+                source = source.asdict()
+                getter = get_item_value
+            else:
+                raise ValueError('Input not recognized. It must be list,dict or have asdict method')
 
         for c, key in enumerate(self.fields.keys()):
             alt_keys = self.fields[key].get('source_names', [])

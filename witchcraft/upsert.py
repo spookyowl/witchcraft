@@ -33,7 +33,8 @@ def remove_metadata(data_points):
 
         if '_created_at' in item:
             del item['_created_at']
-        
+
+
 def create_table(connection, schema_name, table_name, fields, primary_keys):
 
     columns = fields.items()
@@ -44,6 +45,9 @@ def create_table(connection, schema_name, table_name, fields, primary_keys):
                                  table_name=table_name,
                                  primary_keys=primary_keys)))
 
+# TODO: implement column upgrade/add as we go through data points To make this 
+# possible DataPoint have to implement simple way of checking if fields sqltype changed.
+# 
 
 def prepare_table(connection, schema_name, table_name, data_points, primary_keys):
 
@@ -79,7 +83,6 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
 
             if set(primary_keys) != set(discovered_pkeys):
                 raise ValueError('Primary keys in destination table are not matching with defined primary keys')
-
             primary_keys = discovered_pkeys
 
     missing_columns = required_columns - discovered_columns
