@@ -3,6 +3,7 @@
 import re
 import os
 import binascii
+import json
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date
@@ -87,12 +88,20 @@ def quote_param(value, dialect='psql'):
     if isinstance(value, date):
         return "'%s'" % value.isoformat()
 
+    if isinstance(value, dict):
+        sql_string_value = SqlString(json.dumps(value))
+        sql_string_value.encoding = 'utf-8'
+        value = sql_string_value.getquoted().decode("utf-8")
+        value = value.replace('%','%%')
+        return value
+
     if isinstance(value, set):
         quote_func = lambda p: quote_param(p, dialect)
         return "(" + ','.join(map(quote_func, value)) + ")"
 
     if isinstance(value, list):
         quote_func = lambda p: quote_param(p, dialect)
+
         try:
             return "(" + ','.join(map(quote_func, value)) + ")"
         except Exception as e:
