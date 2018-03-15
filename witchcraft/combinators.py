@@ -557,3 +557,8 @@ def distinct(iterable, *columns):
         return False
 
     return __buildin_filter(ffn, iterable)
+
+
+def apply_func(func, args, kwargs):
+    return func(*args, **kwargs)
+
