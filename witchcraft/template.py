@@ -54,6 +54,9 @@ def quote_param(value, dialect='psql'):
     if isinstance(value, bytes):
         return "decode('%s', 'hex')::bytea" % binascii.hexlify(value).decode('ascii')
 
+    if isinstance(value, memoryview):
+        return "decode('%s', 'hex')::bytea" % binascii.hexlify(bytes(value)).decode('ascii')
+
     if isinstance(value, int) or isinstance(value, long):
         return str(value)
 
