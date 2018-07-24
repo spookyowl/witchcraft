@@ -3,7 +3,7 @@ import os.path
 from operator import itemgetter
 from threading import Thread
 from threading import Semaphore
-from itertools import islice
+from itertools import islice, zip_longest
 import traceback
 
 try:
@@ -447,7 +447,7 @@ def join_by_columns(left, right, left_keys, right_keys):
     mlk = set(left[0].keys())
     mrk = set(right[0].keys()) - set(right_keys)
 
-    tuple_type = build_tuple_type(list(mrk)+list(mlk))
+    tuple_type = build_tuple_type(list(mrk) + list(mlk))
 
     def merge(left, right, k):
         result = []
@@ -561,4 +561,21 @@ def distinct(iterable, *columns):
 
 def apply_func(func, args, kwargs):
     return func(*args, **kwargs)
+
+
+def equal(left, right):
+    
+    if isinstance(left, list) and isinstance(right, list):
+
+        for l,r in zip_longest(left,right):
+            if l != r:
+                return False
+
+        return True
+
+    elif not isinstance(left, list) and not isinstance(right, list):
+        return left == right
+
+    else:
+        raise ValueError("Both arguments must be eigher of type 'list' or ")
 
