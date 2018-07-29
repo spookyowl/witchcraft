@@ -282,7 +282,10 @@ class DictItem(DictMixin, BaseItem):
         return len(self.fields)
 
     def __iter__(self):
-        return self
+        return iter(self.fields.keys())
+    
+    def is_empty(self):
+        return len(self._values) == 0
 
     def load(self, source):
         getter = None
@@ -372,6 +375,28 @@ def read_batch(iterator, batch_size=None):
             return result
 
     return result 
+
+
+def remove_null_rows(batch, primary_key):
+    
+    def ff(item):
+        for k in primary_key:
+            if batch[k] is None:
+                return False
+
+        empty_count = 0
+
+        for c in item.values():
+            if c is None:
+                empty_count +=1
+
+        if empty_count == len(item):
+            return False
+
+        #print (item, len(item), empty_count, item.is_empty())
+        return True
+
+    return list(filter(ff,batch))
 
 
 class seekable(object):

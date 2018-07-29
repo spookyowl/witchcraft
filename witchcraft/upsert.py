@@ -472,6 +472,29 @@ def preprocess_csv_data(input_data):
     return formated_header, header, data[1:]
 
 
+def get_row_data_types(header, row, current_types=None, detect_type_func=None):
+
+    if detect_type_func is None:
+        detect_type_func = detect_type
+
+    if current_types is None:
+        current_types = {}
+
+    new_types = dict(current_types)
+
+    result_row = []
+
+    for i, value in enumerate(row):
+
+        if i >= len(header):
+            break
+
+        v, new_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
+        result_row.append(v)
+
+    return result_row, new_types
+
+
 def get_data_types(header, data, current_types=None, detect_type_func=None):
 
     if detect_type_func is None:
