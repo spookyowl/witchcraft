@@ -378,10 +378,10 @@ def read_batch(iterator, batch_size=None):
 
 
 def remove_null_rows(batch, primary_key):
-    
+
     def ff(item):
         for k in primary_key:
-            if batch[k] is None:
+            if item[k] is None:
                 return False
 
         empty_count = 0
