@@ -308,7 +308,7 @@ def detect_dayfirst(dates):
 def parse_csv(input_data, delimiter=';', quotechar='"'):
     sniffer = csv.Sniffer()
     try:
-        dialect = sniffer.sniff(input_data, delimiters=';,\t')
+        dialect = sniffer.sniff(input_data, delimiters=';\t')
     except:
         csv.register_dialect('dlb_excel', delimiter=delimiter, quotechar=quotechar)
         dialect = csv.get_dialect('dlb_excel')
@@ -401,6 +401,9 @@ def detect_type(value, current_type=None):
 
         elif value.lower() in ['false', 'f', 'no', 'n']:
             return False, InputType('bool')
+
+        else:
+            return None, current_type
 
     elif current_type.name.startswith('timestamp'):
         #TODO: handle timezones
@@ -508,6 +511,7 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
 
         result_row = []
         for i, value in enumerate(row):
+            
             v, current_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
             result_row.append(v)
             
