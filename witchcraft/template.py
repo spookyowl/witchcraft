@@ -102,6 +102,11 @@ def quote_param(value, dialect='psql'):
         quote_func = lambda p: quote_param(p, dialect)
         return "(" + ','.join(map(quote_func, value)) + ")"
 
+    if isinstance(value, tuple):
+        quote_func = lambda p: quote_param(p, dialect)
+        return "(" + ','.join(map(quote_func, value)) + ")"
+
+
     if isinstance(value, list):
         quote_func = lambda p: quote_param(p, dialect)
 

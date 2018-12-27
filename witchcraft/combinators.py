@@ -12,7 +12,6 @@ except ImportError:
     from Queue import Queue
 
 
-
 from witchcraft.utils import build_tuple_type, find_query_template, __query_paths
 from witchcraft.template import Template
 from witchcraft.utils import coalesce, chainlist

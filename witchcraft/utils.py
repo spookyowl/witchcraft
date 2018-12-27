@@ -301,7 +301,16 @@ class DictItem(DictMixin, BaseItem):
             return None
 
         if isinstance(source, list):
-            getter = lambda c,k: source[c]
+            def faa(c,k):
+                if c >= len(source):
+                    print(source)
+                    return None
+
+                return source[c]
+
+            getter = faa
+            
+            #getter = lambda c,k: source[c]
 
         elif isinstance(source, dict):
             getter = get_item_value
