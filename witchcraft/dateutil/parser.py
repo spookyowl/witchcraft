@@ -432,9 +432,18 @@ class _ymd(list):
             elif dayfirst and self[1] <= 12:
                 # 13-01
                 day, month = self
-            elif (not dayfirst) and self[0] <= 12:
+            elif dayfirst == False and self[0] <= 12:
                 # 01-13
                 month, day = self
+
+            elif dayfirst is None and self[0] <= 12 and self[1] > 12:
+                month, day = self
+                dayfirst = False
+
+            elif dayfirst is None and self[0] > 12 and self[1] <= 12:
+                day, month = self
+                dayfirst = True
+
             else:
                 raise ValueError('Month out of range')
 
@@ -480,8 +489,20 @@ class _ymd(list):
                 elif (not dayfirst) and self[0] <= 12:
                     # 01-13-01
                     month, day, year = self
+
+
+                elif dayfirst is None and self[0] <= 12 and self[1] > 12:
+                    month, day, year = self
+                    dayfirst = False
+
+                elif dayfirst is None and self[0] > 12 and self[1] <= 12:
+                    day, month, year = self
+                    dayfirst = True
                 else:
-                    raise ValueError('Month out of range')
+                    if dayfirst is None:
+                        raise ValueError('Day/Month order ambiguos')
+                    else:
+                        raise ValueError('Month out of range')
 
         return year, month, day
 
@@ -669,8 +690,8 @@ class parser(object):
 
         info = self.info
 
-        if dayfirst is None:
-            dayfirst = info.dayfirst
+        #if dayfirst is None:
+        #    dayfirst = info.dayfirst
 
         if yearfirst is None:
             yearfirst = info.yearfirst

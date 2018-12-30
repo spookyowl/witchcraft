@@ -333,7 +333,7 @@ def detect_type(value, current_type=None):
         try:
             result = dateutil_parse(value)
             #TODO: handle timezones
-            return result, InputType('timestamp', dict(dayfirst=None, last_value=result))
+            return result, InputType('timestamp', dict(dayfirst=detect_dayfirst(value), last_value=result))
 
         except Exception as e:
             pass
@@ -383,6 +383,7 @@ def detect_type(value, current_type=None):
         return value, InputType('numeric', dict(precision=precision, scale=scale))
 
     elif current_type.name == 'int' or current_type.name == 'integer':
+
         if value == '' or value is None:
             return None, current_type
 
@@ -408,21 +409,21 @@ def detect_type(value, current_type=None):
     elif current_type.name.startswith('timestamp'):
         #TODO: handle timezones
         result = re.findall('\d+|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec', value.lower())
-
         if len(result) < 3 or len(result) > 8:
             return value, InputType('text')
 
         try:
             dateutil_parse(value, dayfirst=current_type.params.get('dayfirst'))
-
-        except:
+            
+        except Exception as e:
             return value, InputType('text')
         
         if current_type.params.get('dayfirst') is None:
             #FIXME: dayfirst = detect_dayfirst(current_type.params['last_value'])
             dayfirst = detect_dayfirst(value)
+            result = dateutil_parse(value,  dayfirst=dayfirst)
 
-        return value, InputType('timestamp', dict(dayfirst=dayfirst, last_value=value))
+        return result, InputType('timestamp', dict(dayfirst=dayfirst, last_value=value))
 
     else:
         return value, current_type
