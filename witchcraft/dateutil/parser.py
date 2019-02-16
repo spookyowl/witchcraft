@@ -372,6 +372,7 @@ class _ymd(list):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.century_specified = False
         self.tzstr = tzstr
+        self.result_dayfirst = None
 
     @staticmethod
     def token_could_be_year(token, year):
@@ -504,6 +505,8 @@ class _ymd(list):
                     else:
                         raise ValueError('Month out of range')
 
+        
+        self.result_dayfirst = dayfirst
         return year, month, day
 
 
@@ -636,13 +639,14 @@ class parser(object):
 
         if kwargs.get('fuzzy_with_tokens', False):
             return ret, skipped_tokens
+
         else:
-            return ret
+            return ret, res.dayfirst
 
     class _result(_resultbase):
         __slots__ = ["year", "month", "day", "weekday",
                      "hour", "minute", "second", "microsecond",
-                     "tzname", "tzoffset", "ampm"]
+                     "tzname", "tzoffset", "ampm", "dayfirst"]
 
     def _parse(self, timestr, dayfirst=None, yearfirst=None, fuzzy=False,
                fuzzy_with_tokens=False):
@@ -1077,6 +1081,8 @@ class parser(object):
 
             if day is not None:
                 res.day = day
+
+            res.dayfirst = ymd.result_dayfirst
 
         except (IndexError, AssertionError):
             return None, None

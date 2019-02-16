@@ -306,6 +306,7 @@ def detect_dayfirst(dates):
 
 
 def parse_csv(input_data, delimiter=';', quotechar='"'):
+
     sniffer = csv.Sniffer()
     try:
         dialect = sniffer.sniff(input_data, delimiters=';\t')
@@ -316,11 +317,15 @@ def parse_csv(input_data, delimiter=';', quotechar='"'):
     data = input_data
     data = data.splitlines()
     data = csv.reader(data, dialect=dialect)
+
+    # remove redundant new lines
+    data = filter(lambda i: len(i) != 0, data)
+
     return list(data)
 
 
 def detect_type(value, current_type=None):
-
+    #TODO: Optimize, this is where 80-90% time is spent when loading data
     if value is None:
         return None, current_type       
 
@@ -331,9 +336,9 @@ def detect_type(value, current_type=None):
             return extract_result
 
         try:
-            result = dateutil_parse(value)
+            result, dayfirst = dateutil_parse(value)
             #TODO: handle timezones
-            return result, InputType('timestamp', dict(dayfirst=detect_dayfirst(value), last_value=result))
+            return result, InputType('timestamp', dict(dayfirst=dayfirst, last_value=result))
 
         except Exception as e:
             pass
@@ -407,21 +412,28 @@ def detect_type(value, current_type=None):
             return None, current_type
 
     elif current_type.name.startswith('timestamp'):
+
+        if value == '' or value is None:
+            return None, current_type
+
         #TODO: handle timezones
         result = re.findall('\d+|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec', value.lower())
         if len(result) < 3 or len(result) > 8:
             return value, InputType('text')
 
+        dayfirst = None
+
         try:
-            dateutil_parse(value, dayfirst=current_type.params.get('dayfirst'))
-            
+            if current_type.params.get('dayfirst') is None:
+                #FIXME: dayfirst = detect_dayfirst(current_type.params['last_value'])
+                #dayfirst = detect_dayfirst(value)
+                result, dayfirst = dateutil_parse(value)
+            else:
+                dayfirst = current_type.params['dayfirst']
+                result, dayfirst = dateutil_parse(value, dayfirst=dayfirst)
+
         except Exception as e:
             return value, InputType('text')
-        
-        if current_type.params.get('dayfirst') is None:
-            #FIXME: dayfirst = detect_dayfirst(current_type.params['last_value'])
-            dayfirst = detect_dayfirst(value)
-            result = dateutil_parse(value,  dayfirst=dayfirst)
 
         return result, InputType('timestamp', dict(dayfirst=dayfirst, last_value=value))
 
@@ -431,47 +443,12 @@ def detect_type(value, current_type=None):
 
 def preprocess_csv_data(input_data):
     data = parse_csv(input_data)
-
+    
     if len(data) < 2:
         raise ValueError('Not enough data')
 
     header = data[0]
-    formated_header = []
-    collisions = {}
-    generic_name_counter = 0
-
-    for column in header:
-
-        letters_and_digits = string.ascii_lowercase + string.digits
-        buf = ''
-
-        if len(column) > 0:
-            for i, char in enumerate(column.lower()):
-
-                if i == 0 and char in string.digits:
-                    buf += '_'
-
-                elif char not in letters_and_digits:
-                    buf += '_'
-
-                else:
-                    buf += char
-
-            # check for collisions
-            if buf in formated_header:
-                suffix = collisions.get(buf)
-
-                if suffix is not None:
-                    collisions[buf] = suffix+1 
-                    buf = buf + '_' +  str(suffix+1)
-
-                else:
-                    buf += '_1'
-        else:
-            generic_name_counter += 1
-            buf = 'column_%i' % generic_name_counter
-
-        formated_header.append(buf)
+    fromated_header = format_header(header)
     
     return formated_header, header, data[1:]
 
@@ -511,15 +488,65 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
     for row in data:
 
         result_row = []
-        for i, value in enumerate(row):
+        empty_count = 0
 
+        for value in row:
+            if value == '':
+                empty_count +=1
+
+        if empty_count == len(row):
+            continue
+
+        for i, value in enumerate(row):
             v, current_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
             result_row.append(v)
-            
+
         result_data.append(result_row)
 
     return result_data, current_types
 
 
+def format_header(header):
+
+    formated_header = []
+    collisions = {}
+    generic_name_counter = 0
+
+    for column in header:
+
+        letters_and_digits = string.ascii_lowercase + string.digits
+        buf = ''
+
+        if len(column) > 0:
+            for i, char in enumerate(column.lower()):
+
+                if i == 0 and char in string.digits:
+                    buf += '_'
+
+                elif char not in letters_and_digits:
+                    buf += '_'
+
+                else:
+                    buf += char
+
+            # check for collisions
+            if buf in formated_header:
+                suffix = collisions.get(buf)
+
+                if suffix is not None:
+                    collisions[buf] = suffix+1 
+                    buf = buf + '_' +  str(suffix+1)
+
+                else:
+                    buf += '_1'
+        else:
+            generic_name_counter += 1
+            buf = 'column_%i' % generic_name_counter
+
+        formated_header.append(buf)
+
+    return formated_header
+
+
 if __name__ == '__main__':
-    print(detect_type('2017-05-17 12:27:25.294589'))
+    print(detect_type('2017-05-17 12:27:25.2945'))
