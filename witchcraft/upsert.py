@@ -448,7 +448,7 @@ def preprocess_csv_data(input_data):
         raise ValueError('Not enough data')
 
     header = data[0]
-    fromated_header = format_header(header)
+    formated_header = format_header(header)
     
     return formated_header, header, data[1:]
 
