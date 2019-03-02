@@ -3,7 +3,8 @@ UPDATE :schema_name.:table_name
     :(map
    (fn [column] 
       (+ "\"" column "\"" "= data_update.\"" column "\""))
-   column_names)
+   column_names),
+   _updated_at = now()
 
 FROM data_update     
 WHERE
@@ -12,5 +13,5 @@ WHERE
    (fn [memo pkey]
      (+ memo " AND " schema-name "." table-name "." pkey "= data_update." pkey))
    primary_keys "")
-;
 
+;

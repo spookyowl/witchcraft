@@ -122,7 +122,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                              primary_keys=primary_keys),
                         connection.database_type))
 
-    inserted = query(connection, template('%s_upsert_insert' % prefix,
+    inserted = execute(connection, template('%s_upsert_insert' % prefix,
                         dict(schema_name=schema_name,
                              table_name=table_name,
                              column_names=column_names,
@@ -132,7 +132,8 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                         connection.database_type))
     connection.commit()
 
-    return (inserted[0].count, updated)
+    print('UPSERT', inserted, updated)
+    return (inserted, updated)
 
 
 def insert_data(connection, schema_name, table_name, data_points):

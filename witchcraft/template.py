@@ -145,7 +145,7 @@ class Parameter(object):
     def evaluate(self, context, dialect='psql'):
         value = context.get(self.name)
 
-        if value is None:
+        if self.name not in context:
             raise ValueError("variable %s or not found" % self.name)
 
         quote_func = lambda p: quote_param(p, dialect)

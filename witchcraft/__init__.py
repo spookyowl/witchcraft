@@ -42,7 +42,7 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None):
     inserted, updated = upsert_data(connection, schema_name, table_name, first_batch, primary_keys)
     read_total += len(first_batch)
     inserted_total += inserted
-    updated_total += updated_total
+    updated_total += updated
 
     while True:
         batch = read_batch(iterator)
@@ -53,7 +53,7 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None):
             inserted, updated = upsert_data(connection, schema_name, table_name, batch, primary_keys)
             read_total += len(batch)
             inserted_total += inserted
-            updated_total += updated_total
+            updated_total += updated
 
         else:
             break
