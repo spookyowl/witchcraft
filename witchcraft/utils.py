@@ -1,3 +1,4 @@
+import string
 from pprint import pformat
 from collections import OrderedDict
 from datetime import datetime, date
@@ -30,6 +31,49 @@ def convert_column_name(column_name):
     column_name = column_name.lower()
     column_name = column_name.replace(' ','_')
     return column_name.replace('-','_')
+
+
+class ColumnNameGenerator(object):
+
+    def __init__(self):
+        self.header_memory = []
+        self.collisions = {}
+        self.generic_name_counter = 0    
+        self.letters_and_digits = string.ascii_lowercase + string.digits
+
+    def next_name(self, orignal_name):
+
+        buf = ''
+
+        if len(orignal_name) > 0:
+            for i, char in enumerate(orignal_name.lower()):
+
+                if i == 0 and char in string.digits:
+                    buf += '_'
+
+                elif char not in self.letters_and_digits:
+                    buf += '_'
+
+                else:
+                    buf += char
+
+            # check for collisions
+            if buf in self.header_memory:
+                suffix = self.collisions.get(buf)
+
+                if suffix is not None:
+                    self.collisions[buf] = suffix+1 
+                    buf = buf + '_' +  str(suffix+1)
+
+                else:
+                    buf += '_1'
+        else:
+            self.generic_name_counter += 1
+            buf = 'column_%i' % self.generic_name_counter
+
+        self.header_memory.append(buf)
+
+        return buf
 
 
 def coalesce(*values):
@@ -303,7 +347,6 @@ class DictItem(DictMixin, BaseItem):
         if isinstance(source, list):
             def faa(c,k):
                 if c >= len(source):
-                    print(source)
                     return None
 
                 return source[c]

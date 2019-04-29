@@ -132,7 +132,6 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                         connection.database_type))
     connection.commit()
 
-    print('UPSERT', inserted, updated)
     return (inserted, updated)
 
 
