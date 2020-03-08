@@ -82,7 +82,7 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
         if len(primary_keys) != 0:
 
             if set(primary_keys) != set(discovered_pkeys):
-                raise ValueError('Primary keys in destination table are not matching with defined primary keys')
+                raise ValueError('Primary keys in destination table are not matching with defined primary keys %s %s' % (set(primary_keys),set(discovered_pkeys)))
             primary_keys = discovered_pkeys
 
     missing_columns = required_columns - discovered_columns

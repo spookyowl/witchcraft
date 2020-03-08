@@ -90,7 +90,6 @@ def batch_fetch(connection, sql_query, batch_size):
     result_proxy.close()
 
 
-
 def execute(connection, sql_query):
     if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
         result_proxy = connection.connection.execute(sql_query)
@@ -161,9 +160,8 @@ def group_by(data, key_func, *operations):
         group_list.append(item)
         memo[key] = group_list
 
-    #print 'G', memo
-
     for key, value in memo.items():
+
         for op_fn in operations:
 
             if isinstance(op_fn, tuple):
@@ -221,7 +219,11 @@ def ommit_columns(tuple_set, columns):
         keys = item.keys()
         keys = list(set(item.keys()) - set(columns))
         result_type = build_tuple_type(*keys)
-        return result_type(item.select(keys))
+
+        if isinstance(item, dict):
+            return result_type({k:item[k] for k in item if k in keys})
+        else:
+            return result_type(item.select(keys))
         
     return list(map(ommit_fn, tuple_set))
 
@@ -356,9 +358,11 @@ def flatten(mapping, default_keys=None):
     result = []
 
     if list_value:
+
         for key, value in mapping.items():
+
             for item in value:
-              result.append(ResultType(key.items() + item.items()))
+                result.append(ResultType(key.items() + list(item.items())))
                 
     else:
         for key, value in mapping.items():
@@ -375,8 +379,7 @@ def itemize_dict(mapping, columns):
     for key, value in mapping.items():
         item = {}
 
-        #key is not dictionary
-        
+        # key is not dictionary
         if not callable(getattr(key,'values', None)):
             key = {'value': key}
 
@@ -389,7 +392,7 @@ def itemize_dict(mapping, columns):
     return result
 
 
-def complement(left, right, combine_fn):
+def complement(left, right, combine_fn=None):
     left_keys = set(left.keys())
     right_keys = set(right.keys())
 

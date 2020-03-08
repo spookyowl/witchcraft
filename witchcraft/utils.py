@@ -163,10 +163,17 @@ class TupleMeta(object):
 
     def __hash__(self):
 
-        if len(self.__slots__) == 1:
-            return hash(self.values()[0])
+        def hash_value(v):
+            
+            if isinstance(v, dict):
+                return frozenset(v.items())
 
-        return hash(tuple(self.values()))
+            return v
+
+        if len(self.__slots__) == 1:
+            return hash(hash_value(self.values()[0]))
+
+        return hash(tuple([hash_value(v) for v in self.values()]))
 
     def __len__(self):
         return len(self.__slots__)
@@ -377,7 +384,7 @@ class DictItem(DictMixin, BaseItem):
         for c, key in enumerate(self.fields.keys()):
             alt_keys = self.fields[key].get('source_names', [])
 
-            if  in self.fields[key].get('from_camel_case', False):
+            if self.fields[key].get('from_camel_case', False):
                 alt_keys = [to_camel_case(key)]
                 
             value = getter(c, [key] + alt_keys)
