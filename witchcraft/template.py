@@ -6,7 +6,7 @@ import binascii
 import json
 from pyparsing import *
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime, date, time
 from witchcraft.utils import coalesce, chainlist
 
 
@@ -90,6 +90,9 @@ def quote_param(value, dialect='psql'):
 
     if isinstance(value, date):
         return "'%s'" % value.isoformat()
+
+    if isinstance(value, time):
+        return "'%s'" % str(value)
 
     if isinstance(value, dict):
         sql_string_value = SqlString(json.dumps(value))
