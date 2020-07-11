@@ -265,7 +265,16 @@ def extract_number(number_str, decimal=None):
         return number, input_type
 
     elif len(groups) == 1:
-        return int(groups[0]), InputType('int')
+        value = int(groups[0])
+
+        if value <= 2147483647 and value >= -2147483648:
+            return value, InputType('int')
+
+        elif value <= 9223372036854775807 and value >= -9223372036854775808:
+            return value, InputType('bigint')
+
+        else:
+            return value, InputType('text')
 
     elif len(groups) > 1:
         number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
@@ -387,7 +396,7 @@ def detect_type(value, current_type=None):
             
         return value, InputType('numeric', dict(precision=precision, scale=scale))
 
-    elif current_type.name == 'int' or current_type.name == 'integer':
+    elif current_type.name == 'int' or current_type.name == 'integer' or current_type.name == 'bigint':
 
         if value == '' or value is None:
             return None, current_type
