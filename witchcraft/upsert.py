@@ -361,7 +361,7 @@ def detect_type(value, current_type=None):
         return value, InputType('text')
 
     elif current_type.name == 'text':
-        return value, InputType('text')
+        return str(value), InputType('text')
 
     elif current_type.name == 'numeric':
 
@@ -508,6 +508,7 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
 
         for i, value in enumerate(row):
             v, current_types[header[i]] = detect_type_func(value, current_types.get(header[i]))
+
             result_row.append(v)
 
         result_data.append(result_row)
