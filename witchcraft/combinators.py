@@ -229,6 +229,23 @@ def ommit_columns(tuple_set, columns):
     return list(map(ommit_fn, tuple_set))
 
 
+def add_column(tuple_set, column_name, value):
+
+    def add_fn(item):
+
+        result_type = build_tuple_type(*(list(item.keys()) + [column_name]))
+
+        if isinstance(item, dict):
+            r = dict(**item)
+        else:
+            r = item.asdict()
+
+        r[column_name] = value
+        return result_type(r)
+
+    return list(map(add_fn, tuple_set))
+
+
 def aggregate(iterable, *aggregators):
     memo = iterable
 

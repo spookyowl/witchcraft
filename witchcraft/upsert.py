@@ -49,7 +49,7 @@ def create_table(connection, schema_name, table_name, fields, primary_keys):
 # possible DataPoint have to implement simple way of checking if fields sqltype changed.
 # 
 
-def prepare_table(connection, schema_name, table_name, data_points, primary_keys):
+def prepare_table(connection, schema_name, table_name, data_points, primary_keys, version_column=None):
 
     fields = data_points[0].fields
     prefix = prefix_dict.get(connection.database_type)
@@ -79,6 +79,9 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
         discovered_pkeys = filter(lambda r: r.is_pkey, result)
         discovered_pkeys = list(map(lambda r: r.column_name.lower(), discovered_pkeys))
 
+        if version_column is not None:
+            discovered_pkeys.remove(version_column)
+
         if len(primary_keys) != 0:
 
             if set(primary_keys) != set(discovered_pkeys):
@@ -95,6 +98,14 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
                                      table_name=table_name,
                                      column_name=column_name,
                                      column_type=column_type)))
+
+    if version_column is not None and version_column not in discovered_columns:
+        execute(connection, template('%s_add_column' % prefix,
+                                dict(schema_name=schema_name,
+                                     table_name=table_name,
+                                     column_name=version_column,
+                                     column_type='integer')))
+
     return primary_keys
 
 
@@ -102,6 +113,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
 
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
+
     connection.begin()
 
     execute(connection, template('%s_upsert_load' % prefix,
@@ -265,7 +277,7 @@ def extract_number(number_str, decimal=None):
         return number, input_type
 
     elif len(groups) == 1:
-        value = int(groups[0])
+        value = int(sign + groups[0])
 
         if value <= 2147483647 and value >= -2147483648:
             return value, InputType('int')

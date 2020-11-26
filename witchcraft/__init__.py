@@ -173,7 +173,7 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
         now = connection.get_current_timestamp()
         return LoadResult(0, 0, 0, 0, now, now)
 
-    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
+    prepare_table(connection, schema_name, table_name, first_batch, primary_keys, version_column='version')
 
     update_started_at = connection.get_current_timestamp()
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)

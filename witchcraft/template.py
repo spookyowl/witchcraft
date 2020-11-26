@@ -138,6 +138,21 @@ class EscapeKeywords(object):
         else:
             return value
 
+class QuoteName(object):
+
+    def __init__(self, dialect):
+
+        if dialect == 'mysql':
+            self.quote = '`'
+        else:
+            self.quote = '"'
+
+    def __call__(self, value):
+    
+        if str(value).lower() != str(value):
+            return text(self.quote + value + self.quote)
+        else:
+            return value
 
 class Parameter(object):
 
@@ -172,6 +187,7 @@ class EvalExpression(object):
     def evaluate(self, context, dialect='psql'):
         ctx = dict(globals())
         ctx['esckwd'] = EscapeKeywords(dialect)
+        ctx['quotename'] = QuoteName(dialect)
         ctx['coalesce'] = coalesce
         ctx['chainlist'] = chainlist
         ctx.update(context)
