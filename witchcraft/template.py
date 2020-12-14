@@ -149,7 +149,7 @@ class QuoteName(object):
 
     def __call__(self, value):
     
-        if str(value).lower() != str(value):
+        if str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]\s+', value) is None:
             return text(self.quote + value + self.quote)
         else:
             return value
