@@ -4,11 +4,11 @@ import re
 import os
 import binascii
 import json
+import uuid
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date, time
-from witchcraft.utils import coalesce, chainlist
-
+from witchcraft.utils import coalesce, chainlist, find_query_template, __query_paths
 
 try:
     import itertools.imap as map
@@ -92,6 +92,9 @@ def quote_param(value, dialect='psql'):
         return "'%s'" % value.isoformat()
 
     if isinstance(value, time):
+        return "'%s'" % str(value)
+
+    if isinstance(value, uuid.UUID):
         return "'%s'" % str(value)
 
     if isinstance(value, dict):
@@ -190,6 +193,7 @@ class EvalExpression(object):
         ctx['quotename'] = QuoteName(dialect)
         ctx['coalesce'] = coalesce
         ctx['chainlist'] = chainlist
+        ctx['template'] = template
         ctx.update(context)
         result = string_to_quoted_expr(self.expression)
         result = hy_eval(result, ctx, 'inline_hy')[0]
@@ -202,7 +206,13 @@ class EvalExpression(object):
 
         elif isinstance(result, list) or isinstance(result, map):
             #result = list(result)
-            result = ', '.join(list(map(conv_func, result)))
+            try:
+                result = ', '.join(list(map(conv_func, result)))
+            except TypeError:
+                raise ValueError('TypeError %s' % list(result))
+
+            except:
+                raise ValueError('Unhandled Error %s' % list(result))
         else:
             result = conv_func(result)
 
@@ -247,3 +257,37 @@ class Template(object):
 
         #escape replace
         return acc.replace('??','?')
+
+
+__template_cache = {}
+
+def conv_symbol_name(s):
+    s = s.lstrip(u'\ufdd0:')
+    return s.replace('-','_')
+
+
+def template(template_name, context = None, dialect = None):
+    cache_key = template_name
+
+    if context is not None:
+        
+        conv_context = {}
+        for k,v in context.items():
+            conv_context[conv_symbol_name(k)] = v
+    else:
+        conv_context = {}
+
+    found = __template_cache.get(cache_key)
+
+    if found is not None:
+        #TODO: handle dialect when teplate is used
+        return Template(found, dialect).substitute(**conv_context)
+
+    query_tpl = find_query_template(template_name)
+
+    if query_tpl is not None:
+        __template_cache[cache_key] = query_tpl
+        return Template(query_tpl, dialect).substitute(**conv_context)
+    else:
+        raise ValueError('Template not found')
+

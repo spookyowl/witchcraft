@@ -570,3 +570,4 @@ def find_query_template(template_name):
                 query_tpl = query_file.read()
 
             return query_tpl
+

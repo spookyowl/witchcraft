@@ -12,14 +12,12 @@ except ImportError:
     from Queue import Queue
 
 
-from witchcraft.utils import build_tuple_type, find_query_template, __query_paths
-from witchcraft.template import Template
+from witchcraft.utils import build_tuple_type, __query_paths
 from witchcraft.utils import coalesce, chainlist
-
+from witchcraft.template import template
 
 __buildin_filter = filter
 __buildin_map = map
-__template_cache = {}
 
 
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -44,11 +42,6 @@ def set_query_path(path):
         __query_paths.insert(0, path)
 
     __query_paths.append(os.path.join(base_path, 'queries'))
-
-
-def conv_symbol_name(s):
-    s = s.lstrip(u'\ufdd0:')
-    return s.replace('-','_')
 
 
 def dict_merge(a, b):
@@ -100,32 +93,6 @@ def execute(connection, sql_query):
     row_count = result_proxy.rowcount
     result_proxy.close()
     return row_count
-
-
-def template(template_name, context = None, dialect = None):
-    cache_key = template_name
-
-    if context is not None:
-        
-        conv_context = {}
-        for k,v in context.items():
-            conv_context[conv_symbol_name(k)] = v
-    else:
-        conv_context = {}
-
-    found = __template_cache.get(cache_key)
-
-    if found is not None:
-        #TODO: handle dialect when teplate is used
-        return Template(found, dialect).substitute(**conv_context)
-
-    query_tpl = find_query_template(template_name)
-
-    if query_tpl is not None:
-        __template_cache[cache_key] = query_tpl
-        return Template(query_tpl, dialect).substitute(**conv_context)
-    else:
-        raise ValueError('Template not found')
 
 
 def filter(data, func):
@@ -229,7 +196,7 @@ def ommit_columns(tuple_set, columns):
     return list(map(ommit_fn, tuple_set))
 
 
-def add_column(tuple_set, column_name, value):
+def add_column_with(tuple_set, column_name, func):
 
     def add_fn(item):
 
@@ -240,10 +207,34 @@ def add_column(tuple_set, column_name, value):
         else:
             r = item.asdict()
 
-        r[column_name] = value
+        r[column_name] = func(r)
         return result_type(r)
 
     return list(map(add_fn, tuple_set))
+
+
+def add_column(tuple_set, column_name, value):
+    return add_column_with(tuple_set, column_name, lambda r: value)
+
+
+def set_column_with(tuple_set, column_name, func):
+
+    def set_fn(item):
+        result_type = build_tuple_type(*list(item.keys()))
+
+        if isinstance(item, dict):
+            r = dict(**item)
+        else:
+            r = item.asdict()
+
+        r[column_name] = func(r)
+        return r
+
+    return list(map(set_fn, tuple_set))
+
+
+def set_column(tuple_set, column_name, value):
+    return set_column_with(tuple_set, column_name, lambda r: value)
 
 
 def aggregate(iterable, *aggregators):

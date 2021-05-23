@@ -525,6 +525,12 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
 
         result_data.append(result_row)
 
+
+    for h in header:
+        if h not in current_types:
+            current_types[h] = 'text'
+        
+
     return result_data, current_types
 
 
