@@ -38,6 +38,9 @@ def to_camel_case(snake_str):
     # with the 'title' method and join them together.
     return components[0] + ''.join(x.title() for x in components[1:])
 
+def to_kebab_case(column_name):
+    return column_name.replace('_','-')
+
 
 class ColumnNameGenerator(object):
 
@@ -386,6 +389,9 @@ class DictItem(DictMixin, BaseItem):
 
             if self.fields[key].get('from_camel_case', False):
                 alt_keys = [to_camel_case(key)]
+
+            if self.fields[key].get('from_kebab_case', False):
+                alt_keys = [to_kebab_case(key)]
                 
             value = getter(c, [key] + alt_keys)
 
