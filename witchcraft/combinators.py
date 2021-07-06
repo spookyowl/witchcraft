@@ -250,6 +250,9 @@ def aggregate_list_of(iterable, extract_key):
     result = list(map(lambda i: i[extract_key], iterable))
     return result
 
+def aggregate_lists_of(iterable, extract_key):
+    result = list(map(lambda i: i[extract_key], iterable))
+    return list(itertools.chain(*result))
 
 def aggregate_first_row(iterable):
     return iterable[0]
