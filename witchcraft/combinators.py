@@ -458,6 +458,9 @@ def intersect(left, right, combine_fn=None):
 
 def join_by_columns(left, right, left_keys, right_keys):
 
+    if len(left) == 0:
+        return []
+
     mlk = set(left[0].keys())
     mrk = set(right[0].keys()) - set(right_keys)
 

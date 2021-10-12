@@ -35,9 +35,17 @@ def remove_metadata(data_points):
             del item['_created_at']
 
 
-def create_table(connection, schema_name, table_name, fields, primary_keys):
+def create_table(connection, schema_name, table_name, fields, primary_keys, version_column=None):
 
-    columns = fields.items()
+    primary_keys = list(primary_keys)
+
+
+    columns = list(fields.items())
+
+    if version_column is not None:
+        primary_keys.append(version_column)
+        columns.append((version_column, {'psql_type': 'bigint'}))
+
     prefix = prefix_dict.get(connection.database_type)
     execute(connection, template('%s_create_table' % prefix, 
                             dict(columns=columns,
@@ -50,7 +58,6 @@ def create_table(connection, schema_name, table_name, fields, primary_keys):
 # 
 
 def prepare_table(connection, schema_name, table_name, data_points, primary_keys, version_column=None):
-
     fields = data_points[0].fields
     prefix = prefix_dict.get(connection.database_type)
 
@@ -104,7 +111,7 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
                                 dict(schema_name=schema_name,
                                      table_name=table_name,
                                      column_name=version_column,
-                                     column_type='integer')))
+                                     column_type='bigint')))
 
     return primary_keys
 
@@ -194,7 +201,7 @@ def discover_columns(connection, schema_name, table_name):
     return result
 
 
-def get_max_version(connection, schema_name, table_name):
+def get_max_version(connection, schema_name, table_name, version_column='version'):
     prefix = prefix_dict.get(connection.database_type)
 
     result = query(connection, template('%s_discover_columns' % prefix,
@@ -206,13 +213,14 @@ def get_max_version(connection, schema_name, table_name):
 
     tpl = template('%s_max_version' % prefix,
                      dict(schema_name=schema_name,
-                          table_name=table_name),
+                          table_name=table_name,
+                          version_column=version_column),
                      connection.database_type)
 
     result = query(connection, tpl)
 
-    if len(result) > 0 and result[0].version is not None:
-        return result[0].version+1
+    if len(result) > 0 and getattr(result[0], version_column) is not None:
+        return getattr(result[0], version_column) + 1
     else:
         return 1
 
