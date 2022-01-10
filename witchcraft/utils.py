@@ -205,7 +205,10 @@ class TupleMeta(object):
     def values(self):
         result = []
         for k in self.__slots__:
-            result.append(getattr(self, k))
+            if hasattr(self,k):
+                result.append(getattr(self, k))
+            else:
+                result.append(getattr(self, None))
 
         return result
 
@@ -399,6 +402,9 @@ class DictItem(DictMixin, BaseItem):
                 self[key] = None
 
             elif (isinstance(value, str) or isinstance(value, text)) and value == '' and self.fields[key].get('psql_type') in ('text', 'bytea'):
+                self[key] = None
+
+            elif (isinstance(value, str) or isinstance(value, text)) and value == '' and self.fields[key].get('psql_type') in ('int', 'bigint', 'numeric'):
                 self[key] = None
             
             elif isinstance(value, str):
