@@ -3,6 +3,8 @@ import string
 from decimal import Decimal
 import csv
 import re
+import unidecode
+from collections import OrderedDict
 from witchcraft.combinators import execute, query, template
 from witchcraft.dateutil.parser import parse as dateutil_parse
 
@@ -58,7 +60,11 @@ def create_table(connection, schema_name, table_name, fields, primary_keys, vers
 # 
 
 def prepare_table(connection, schema_name, table_name, data_points, primary_keys, version_column=None):
-    fields = data_points[0].fields
+    fields = OrderedDict([])
+
+    for dp in data_points:
+        fields.update(dp.fields)
+
     prefix = prefix_dict.get(connection.database_type)
 
     required_columns = find_keys(data_points)
@@ -296,12 +302,22 @@ def extract_number(number_str, decimal=None):
         else:
             return value, InputType('text')
 
-    elif len(groups) > 1:
+    # xx.xx
+    elif len(groups) == 2:
         number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
         precision = len(number.as_tuple().digits)
         scale = - number.as_tuple().exponent
         input_type = InputType('numeric', dict(precision=precision, scale=scale))
         return number, input_type
+
+    # x.xxx,xx / x,xxx.xx
+    elif len(groups) == 3 and separators[-1] != separators[-2]:
+        number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
+        precision = len(number.as_tuple().digits)
+        scale = - number.as_tuple().exponent
+        input_type = InputType('numeric', dict(precision=precision, scale=scale))
+        return number, input_type
+
 
     else:
         return None
@@ -413,6 +429,9 @@ def detect_type(value, current_type=None):
             precision = max(current_type.params['precision'], natural_lenght)
             scale = current_type.params['scale']
             precision = max(natural_lenght + scale, precision)
+
+        else:
+            return value, InputType('text')
             
         return value, InputType('numeric', dict(precision=precision, scale=scale))
 
@@ -549,7 +568,7 @@ def format_header(header):
     generic_name_counter = 0
 
     for column in header:
-
+        column = unidecode.unidecode(column)
         letters_and_digits = string.ascii_lowercase + string.digits
         buf = ''
 
