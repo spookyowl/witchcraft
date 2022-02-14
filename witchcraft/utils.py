@@ -298,8 +298,6 @@ class ItemMeta(type):
         return cls
 
 
-
-
 class DictItem(DictMixin, BaseItem):
 
     fields = OrderedDict()
