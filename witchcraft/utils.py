@@ -55,6 +55,7 @@ class ColumnNameGenerator(object):
         buf = ''
 
         if len(orignal_name) > 0:
+
             for i, char in enumerate(orignal_name.lower()):
 
                 if i == 0 and char in string.digits:
@@ -76,6 +77,7 @@ class ColumnNameGenerator(object):
 
                 else:
                     buf += '_1'
+
         else:
             self.generic_name_counter += 1
             buf = 'column_%i' % self.generic_name_counter
@@ -181,6 +183,9 @@ class TupleMeta(object):
     def __len__(self):
         return len(self.__slots__)
 
+    def __iter__(self):
+       return (getattr(self,k) for k in self.__slots__)
+
     def get(self, k, default=None):
         if k in self.__slots__:
 
@@ -204,9 +209,12 @@ class TupleMeta(object):
 
     def values(self):
         result = []
+
         for k in self.__slots__:
+
             if hasattr(self,k):
                 result.append(getattr(self, k))
+
             else:
                 result.append(getattr(self, None))
 
@@ -309,7 +317,12 @@ class DictItem(DictMixin, BaseItem):
                 self[k] = v
 
     def __getitem__(self, key):
-        return self._values[key]
+        if key in self.fields:
+            return self._values.get(key)
+
+        else:
+            raise KeyError("%s does not support field: %s" %
+                (self.__class__.__name__, key))
 
     def __setitem__(self, key, value):
         if key in self.fields:
