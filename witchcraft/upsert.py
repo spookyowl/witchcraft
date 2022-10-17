@@ -318,6 +318,13 @@ def extract_number(number_str, decimal=None):
         input_type = InputType('numeric', dict(precision=precision, scale=scale))
         return number, input_type
 
+    elif len(groups) > 3 and separators[-1] != separators[-2]:
+        number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
+        precision = len(number.as_tuple().digits)
+        scale = - number.as_tuple().exponent
+        input_type = InputType('numeric', dict(precision=precision, scale=scale))
+        return number, input_type
+
 
     else:
         return None
@@ -354,7 +361,7 @@ def parse_csv(input_data, delimiter=';', quotechar='"'):
 
     sniffer = csv.Sniffer()
     try:
-        dialect = sniffer.sniff(input_data, delimiters=';\t')
+        dialect = sniffer.sniff(input_data, delimiters=';\t,')
     except:
         csv.register_dialect('dlb_excel', delimiter=delimiter, quotechar=quotechar)
         dialect = csv.get_dialect('dlb_excel')

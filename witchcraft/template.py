@@ -5,6 +5,7 @@ import os
 import binascii
 import json
 import uuid
+from itertools import starmap
 from pyparsing import *
 from decimal import Decimal
 from datetime import datetime, date, time
@@ -173,7 +174,7 @@ class Parameter(object):
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
 
-        if isinstance(value, list) or isinstance(value, map):
+        if isinstance(value, list) or isinstance(value, map) or isinstance(value, starmap):
             value = ', '.join(list(map(conv_func, value)))
         else:
             value = conv_func(value)
@@ -194,6 +195,7 @@ class EvalExpression(object):
         ctx['coalesce'] = coalesce
         ctx['chainlist'] = chainlist
         ctx['template'] = template
+        ctx['starmap'] = starmap
         ctx.update(context)
         result = string_to_quoted_expr(self.expression)
         result = hy_eval(result, ctx, 'inline_hy')[0]
@@ -204,7 +206,7 @@ class EvalExpression(object):
         if result is None:
             result = ''
 
-        elif isinstance(result, list) or isinstance(result, map):
+        elif isinstance(result, list) or isinstance(result, map) or isinstance(result, starmap):
             #result = list(result)
             try:
                 result = ', '.join(list(map(conv_func, result)))

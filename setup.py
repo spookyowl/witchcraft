@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="witchcraft",
-    version="0.2.49",
+    version="0.2.56",
     description='',
     author='Peter Facka',
     author_email='pfacka@spookyowl.com',
@@ -18,7 +18,8 @@ setup(
 	'psycopg2>=2.6.1',
 	'SQLAlchemy>=1.0.6',
         'hy>=0.11.1',
-        'pyparsing>=2.1.1'
+        'pyparsing>=2.1.1',
+        'unidecode'
     ],
     provides=['witchcraft'],
     include_package_data=True,
