@@ -238,7 +238,7 @@ class Template(object):
 
     parameter = named_parameter | eval_expression
 
-    statement = substatement + ZeroOrMore( parameter + substatement )
+    statement = Optional(substatement) + ZeroOrMore( parameter + substatement) + Optional(parameter)
     statement.leaveWhitespace()
 
     def __init__(self, tpl, dialect = 'psql'):
