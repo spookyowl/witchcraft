@@ -65,16 +65,42 @@ def query(connection, sql_query):
 
 def batch_fetch(connection, sql_query, batch_size):
     if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
+        
         result_proxy = connection.connection.execute(sql_query)
     else:
         result_proxy = connection.execute(sql_query)
 
     if result_proxy.returns_rows:
         result_type = build_tuple_type(*result_proxy.keys())
-        result = map(lambda r: result_type(dict(r)), result_proxy)
+        #result = map(lambda r: result_type(dict(r)), result_proxy)
 
         while True:
-            chunk = list(islice(result, batch_size))
+            #chunk = list(islice(result, batch_size))
+            chunk = islice(result_proxy, batch_size)
+            chunk = list(map(lambda r: result_type(dict(r)), chunk))
+
+            if len(chunk) != 0:
+                yield chunk
+            else:
+                break
+
+    result_proxy.close()
+
+
+def batch_fetch_stream(connection, sql_query, batch_size):
+
+    if connection.connection is not None and callable(getattr(connection.connection, 'execute', None)):
+        result_proxy = connection.connection.execution_options(stream_results=True, yield_per=batch_size).execute(sql_query)
+
+    else:
+        result_proxy = connection.execution_options(stream_results=True, yield_per=batch_size).execute(sql_query)
+
+    if result_proxy.returns_rows:
+        result_type = build_tuple_type(*result_proxy.keys())
+
+        while True:
+            chunk = islice(result_proxy, batch_size)
+            chunk = list(map(lambda r: result_type(dict(r)), chunk))
 
             if len(chunk) != 0:
                 yield chunk
