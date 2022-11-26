@@ -112,6 +112,11 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
                                      column_name=column_name,
                                      column_type=column_type)))
 
+        execute(connection, template('%s_load_table_add_column' % prefix,
+                                dict(column_name=column_name,
+                                     column_type=column_type)))
+
+
     if version_column is not None and version_column not in discovered_columns:
         execute(connection, template('%s_add_column' % prefix,
                                 dict(schema_name=schema_name,
@@ -119,8 +124,22 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
                                      column_name=version_column,
                                      column_type='bigint')))
 
+        execute(connection, template('%s_load_table_add_column' % prefix,
+                                dict(column_name=version_column,
+                                     column_type='bigint')))
+
+
     return primary_keys
 
+
+def upsert_prepare_load_table(connection, columns, primary_keys):
+    prefix = prefix_dict.get(connection.database_type)
+ 
+    execute(connection, template('%s_prepare_load_table' % prefix,
+                        dict(columns=columns,
+                             primary_keys=primary_keys),
+                             connection.database_type))
+  
 
 def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
 
