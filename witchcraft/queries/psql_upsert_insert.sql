@@ -1,5 +1,3 @@
-ANALYZE data_update;
-
 INSERT INTO :schema_name.:table_name
   (:column_names)
 

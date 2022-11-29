@@ -2,7 +2,7 @@ from collections import namedtuple
 from datetime import datetime
 from witchcraft.utils import read_batch, remove_null_rows
 from witchcraft.upsert import prepare_table, upsert_data, insert_data
-from witchcraft.upsert import delete_data, get_max_version, upsert_prepare_load_table
+from witchcraft.upsert import delete_data, get_max_version, upsert_prepare_load_table, find_keys
 from witchcraft.combinators import query, template
 
 
@@ -32,14 +32,16 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None, 
     if primary_keys is None:
         primary_keys = []
 
-    primary_keys = prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
+    load_table_columns = find_keys(first_batch)
+
+    primary_keys = prepare_table(connection, schema_name, table_name, first_batch, load_table_columns, primary_keys)
 
     if len(primary_keys) == 0:
         raise ValueError('Upsert method requires table to have primary key')
 
     update_started_at = connection.get_current_timestamp()
 
-    upsert_prepare_load_table(connection, first_batch[0].fields.items(), primary_keys)
+    upsert_prepare_load_table(connection, first_batch, primary_keys)
 
     inserted, updated = upsert_data(connection, schema_name, table_name, first_batch, primary_keys)
     read_total += len(first_batch)
@@ -51,8 +53,7 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None, 
         batch = remove_null_rows(batch, primary_keys)
 
         if len(batch) > 0:
-            primary_keys = prepare_table(connection, schema_name, table_name, batch, primary_keys)
-            prepare_load_table(connection, batch[0].fields.items(), primary_keys)
+            primary_keys = prepare_table(connection, schema_name, table_name, batch, load_table_columns, primary_keys)
             inserted, updated = upsert_data(connection, schema_name, table_name, batch, primary_keys)
             read_total += len(batch)
             inserted_total += inserted
@@ -82,8 +83,9 @@ def insert(connection, schema_name, table_name, data_points, primary_keys, batch
         return LoadResult(0, 0, 0, 0, now, now)
 
     first_batch = remove_null_rows(first_batch, primary_keys)
+    load_table_columns = find_keys(first_batch)
 
-    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
+    prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys)
     update_started_at = connection.get_current_timestamp()
 
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)
@@ -94,7 +96,7 @@ def insert(connection, schema_name, table_name, data_points, primary_keys, batch
         batch = remove_null_rows(batch, primary_keys)
 
         if len(batch) > 0:
-            prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            prepare_table(connection, schema_name, table_name, batch, None, primary_keys)
             inserted_total += insert_data(connection, schema_name, table_name, batch)
             read_total += len(batch)
         else:
@@ -126,7 +128,7 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None,
 
     first_batch = remove_null_rows(first_batch, primary_keys)
 
-    prepare_table(connection, schema_name, table_name, first_batch, primary_keys)
+    prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys)
 
     update_started_at = connection.get_current_timestamp()
     deleted_total = delete_data(connection, schema_name, table_name)
@@ -138,7 +140,7 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None,
         batch = remove_null_rows(batch, primary_keys)
 
         if len(batch) > 0:
-            prepare_table(connection, schema_name, table_name, batch, primary_keys)
+            prepare_table(connection, schema_name, table_name, batch, None, primary_keys)
             inserted_total += insert_data(connection, schema_name, table_name, batch)
             read_total += len(batch)
         else:
@@ -179,7 +181,7 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
         now = connection.get_current_timestamp()
         return LoadResult(0, 0, 0, 0, now, now)
 
-    prepare_table(connection, schema_name, table_name, first_batch, primary_keys, version_column=version_column)
+    prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys, version_column=version_column)
 
     update_started_at = connection.get_current_timestamp()
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)
@@ -191,7 +193,7 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
         batch = list(map(add_history_column, batch))
 
         if len(batch) > 0:
-            prepare_table(connection, schema_name, table_name, batch, primary_keys, version_column=version_column)
+            prepare_table(connection, schema_name, table_name, batch, None, primary_keys, version_column=version_column)
             inserted_total += insert_data(connection, schema_name, table_name, batch)
             read_total += len(batch)
 

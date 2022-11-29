@@ -59,7 +59,7 @@ def create_table(connection, schema_name, table_name, fields, primary_keys, vers
 # possible DataPoint have to implement simple way of checking if fields sqltype changed.
 # 
 
-def prepare_table(connection, schema_name, table_name, data_points, primary_keys, version_column=None):
+def prepare_table(connection, schema_name, table_name, data_points, load_table_columns, primary_keys, version_column=None):
     fields = OrderedDict([])
 
     for dp in data_points:
@@ -103,6 +103,7 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
 
     missing_columns = required_columns - discovered_columns
 
+
     for column_name in missing_columns:
         column_type = fields.get(column_name)['%s_type' % prefix]
 
@@ -112,31 +113,45 @@ def prepare_table(connection, schema_name, table_name, data_points, primary_keys
                                      column_name=column_name,
                                      column_type=column_type)))
 
-        execute(connection, template('%s_load_table_add_column' % prefix,
-                                dict(column_name=column_name,
-                                     column_type=column_type)))
-
 
     if version_column is not None and version_column not in discovered_columns:
+
         execute(connection, template('%s_add_column' % prefix,
                                 dict(schema_name=schema_name,
                                      table_name=table_name,
                                      column_name=version_column,
                                      column_type='bigint')))
 
-        execute(connection, template('%s_load_table_add_column' % prefix,
-                                dict(column_name=version_column,
-                                     column_type='bigint')))
+
+    if load_table_columns is not None:
+
+        missing_columns = required_columns - load_table_columns
+
+        for column_name in missing_columns:
+            column_type = fields.get(column_name)['%s_type' % prefix]
+
+
+            execute(connection, template('%s_load_table_add_column' % prefix,
+                                    dict(column_name=column_name,
+                                         column_type=column_type)))
+
+            load_table_columns.add(column_name)
+
 
 
     return primary_keys
 
 
-def upsert_prepare_load_table(connection, columns, primary_keys):
+def upsert_prepare_load_table(connection, batch, primary_keys):
     prefix = prefix_dict.get(connection.database_type)
+
+    fields = OrderedDict([])
+
+    for dp in batch:
+        fields.update(dp.fields)
  
     execute(connection, template('%s_prepare_load_table' % prefix,
-                        dict(columns=columns,
+                        dict(columns=fields.items(),
                              primary_keys=primary_keys),
                              connection.database_type))
   
@@ -146,7 +161,8 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
 
-    connection.begin()
+    if connection.transaction is None:
+        connection.begin()
 
     execute(connection, template('%s_upsert_load' % prefix,
                         dict(schema_name=schema_name,
@@ -174,7 +190,10 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                              data_points=data_points,
                              primary_keys=primary_keys),
                         connection.database_type))
-    connection.commit()
+
+
+    if connection.transaction is None:
+        connection.commit()
 
     return (inserted, updated)
 
@@ -182,6 +201,9 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
 def insert_data(connection, schema_name, table_name, data_points):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
+
+    if connection.transaction is None:
+        connection.begin()
 
     inserted = query(connection, 
                    template('%s_insert' % prefix,
@@ -192,7 +214,10 @@ def insert_data(connection, schema_name, table_name, data_points):
                                  data_points=data_points),
                             connection.database_type))
 
-    connection.commit()
+
+    if connection.transaction is None:
+        connection.commit()
+
     return inserted[0].count
 
 
@@ -205,7 +230,6 @@ def delete_data(connection, schema_name, table_name):
 
     if len(result) == 0:
         return 0
-
 
     #TODO: use SqlSession.delete directly?
     deleted_count = execute(connection,
