@@ -153,7 +153,7 @@ class QuoteName(object):
 
     def __call__(self, value):
     
-        if str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]\s+', value) is None:
+        if value in reserved_words or str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]+\s*', value) is None:
             return text(self.quote + value + self.quote)
         else:
             return value
@@ -192,11 +192,13 @@ class EvalExpression(object):
         ctx = dict(globals())
         ctx['esckwd'] = EscapeKeywords(dialect)
         ctx['quotename'] = QuoteName(dialect)
+        ctx['quotevalue'] = lambda p: quote_param(p, dialect=dialect)
         ctx['coalesce'] = coalesce
         ctx['chainlist'] = chainlist
         ctx['template'] = template
         ctx['starmap'] = starmap
         ctx.update(context)
+
         result = string_to_quoted_expr(self.expression)
         result = hy_eval(result, ctx, 'inline_hy')[0]
         quote_func = lambda p: quote_param(p, dialect)

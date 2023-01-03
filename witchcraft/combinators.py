@@ -294,6 +294,7 @@ def _flatten(keys, items, column_names):
     key_names = column_names[:len(keys)]
     result = []
     key_part = dict(zip(key_names, keys))
+
     if isinstance(items, dict):
         first_values = items.values()
 

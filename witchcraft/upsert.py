@@ -161,8 +161,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
 
-    if connection.transaction is None:
-        connection.begin()
+    connection.begin()
 
     execute(connection, template('%s_upsert_load' % prefix,
                         dict(schema_name=schema_name,
@@ -192,8 +191,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
                         connection.database_type))
 
 
-    if connection.transaction is None:
-        connection.commit()
+    connection.commit()
 
     return (inserted, updated)
 
@@ -202,8 +200,7 @@ def insert_data(connection, schema_name, table_name, data_points):
     prefix = prefix_dict.get(connection.database_type)
     column_names = list(find_keys(data_points))
 
-    if connection.transaction is None:
-        connection.begin()
+    connection.begin()
 
     inserted = query(connection, 
                    template('%s_insert' % prefix,
@@ -215,8 +212,7 @@ def insert_data(connection, schema_name, table_name, data_points):
                             connection.database_type))
 
 
-    if connection.transaction is None:
-        connection.commit()
+    connection.commit()
 
     return inserted[0].count
 
