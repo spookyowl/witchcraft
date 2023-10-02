@@ -209,14 +209,12 @@ class EvalExpression(object):
             result = ''
 
         elif isinstance(result, list) or isinstance(result, map) or isinstance(result, starmap):
-            #result = list(result)
+
             try:
                 result = ', '.join(list(map(conv_func, result)))
-            except TypeError:
-                raise ValueError('TypeError %s' % list(result))
 
-            except:
-                raise ValueError('Unhandled Error %s' % list(result))
+            except Exception as exc:
+                raise ValueError('Unhandled Error context:%s exception:%s' % (list(result), exc) )
         else:
             result = conv_func(result)
 
