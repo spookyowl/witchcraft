@@ -27,8 +27,9 @@ class Connection(object):
         self.connection = self.engine.connect()
 
     def disconnect(self):
-        self.connection.close()
-        self.connection = None
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
 
     def execute(self, sql_query):
         if not self.is_connected():
