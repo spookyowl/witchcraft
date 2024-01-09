@@ -21,9 +21,10 @@ except NameError:
 # Use the same json implementation as itsdangerous because Flask does that
 # and we depend on it
 try:                                                                               
-    from itsdangerous import simplejson as _json                                
-except ImportError:                                                             
+    #from itsdangerous import simplejson as _json                                
     from itsdangerous import json as _json                                      
+except ImportError:                                                             
+    import json as _json
 
 
 def convert_column_name(column_name):
@@ -243,6 +244,9 @@ class TupleMeta(object):
     def asjson(self):
         return _json.dumps(self.asdict(), cls=TupleJSONEncoder)
 
+    def toJSON(self):
+        return self.asjson()
+
 
 def build_tuple_type(*columns):
 
@@ -272,7 +276,10 @@ class TupleJSONEncoder(_json.JSONEncoder):
 
         asdict_op = getattr(obj, "asdict", None)
         if callable(asdict_op):
-            return obj.asdict()
+            data = obj.asdict()
+            _json.dumps(data, cls=TupleJSONEncoder)
+
+            return data
 
         else:
             return _json.JSONEncoder.default(self, obj)

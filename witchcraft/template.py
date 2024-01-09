@@ -27,9 +27,10 @@ try:
 except NameError:
     long = int
 
-from hy.lex import parser, lexer
-from hy import HyList
-from hy.importer import hy_eval
+import hy
+#from hy.lex import parser, lexer
+#from hy import HyList
+#from hy.importer import hy_eval
 from psycopg2.extensions import QuotedString as SqlString
 
 
@@ -199,8 +200,13 @@ class EvalExpression(object):
         ctx['starmap'] = starmap
         ctx.update(context)
 
-        result = string_to_quoted_expr(self.expression)
-        result = hy_eval(result, ctx, 'inline_hy')[0]
+        #result = string_to_quoted_expr(self.expression)
+        #result = hy_eval(result, ctx, 'inline_hy')[0]
+        #hycode = hy.read_str(self.expression)
+        #result = hycode.eval(ctx, 'inline_hy')
+        hycode = hy.read(self.expression)
+        result = hy.eval(hycode, ctx)
+
         quote_func = lambda p: quote_param(p, dialect)
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)

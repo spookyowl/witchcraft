@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="witchcraft",
-    version="0.2.66",
+    version="0.3.0",
     description='',
     author='Peter Facka',
     author_email='pfacka@spookyowl.com',
