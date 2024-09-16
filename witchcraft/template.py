@@ -5,6 +5,7 @@ import os
 import binascii
 import json
 import uuid
+import functools
 from itertools import starmap
 from pyparsing import *
 from decimal import Decimal
@@ -127,37 +128,6 @@ def quote_param(value, dialect='psql'):
     raise ValueError("unhandled type: %s, %s" % (type(value), value))
 
 
-class EscapeKeywords(object):
-
-    def __init__(self, dialect):
-
-        if dialect == 'mysql':
-            self.quote = '`'
-        else:
-            self.quote = '"'
-
-    def __call__(self, value):
-
-        if value in reserved_words:
-            return text(self.quote + value + self.quote)
-        else:
-            return value
-
-class QuoteName(object):
-
-    def __init__(self, dialect):
-
-        if dialect == 'mysql':
-            self.quote = '`'
-        else:
-            self.quote = '"'
-
-    def __call__(self, value):
-    
-        if value in reserved_words or str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]+\s*', value) is None:
-            return text(self.quote + value + self.quote)
-        else:
-            return value
 
 class Parameter(object):
 
@@ -190,22 +160,25 @@ class EvalExpression(object):
         self.expression = token[0][1]
 
     def evaluate(self, context, dialect='psql'):
-        ctx = dict(globals())
-        ctx['esckwd'] = EscapeKeywords(dialect)
-        ctx['quotename'] = QuoteName(dialect)
-        ctx['quotevalue'] = lambda p: quote_param(p, dialect=dialect)
-        ctx['coalesce'] = coalesce
-        ctx['chainlist'] = chainlist
-        ctx['template'] = template
-        ctx['starmap'] = starmap
-        ctx.update(context)
+        global_ctx = globals()
+        #global_ctx['esckwd'] = EscapeKeywords(dialect)
+        #global_ctx['quotename'] = QuoteName(dialect)
+        #global_ctx['quotevalue'] = lambda p: quote_param(p, dialect=dialect)
+        #global_ctx['coalesce'] = coalesce
+        #global_ctx['chainlist'] = chainlist
+        #global_ctx['template'] = template
+        #global_ctx['starmap'] = starmap
+        #global_ctx['reduce'] = functools.reduce
+        global_ctx.update(context)
+        #print(type(global_ctx), global_ctx.keys())
 
         #result = string_to_quoted_expr(self.expression)
         #result = hy_eval(result, ctx, 'inline_hy')[0]
         #hycode = hy.read_str(self.expression)
         #result = hycode.eval(ctx, 'inline_hy')
+
         hycode = hy.read(self.expression)
-        result = hy.eval(hycode, ctx)
+        result = hy.eval(hycode, globals=global_ctx, locals=global_ctx)
 
         quote_func = lambda p: quote_param(p, dialect)
 
@@ -220,7 +193,7 @@ class EvalExpression(object):
                 result = ', '.join(list(map(conv_func, result)))
 
             except Exception as exc:
-                raise ValueError('Unhandled Error context:%s exception:%s' % (list(result), exc) )
+                raise ValueError('Unhandled Error context:%s exception:%s ' % ("???", exc) )
         else:
             result = conv_func(result)
 
@@ -278,7 +251,7 @@ def template(template_name, context = None, dialect = None):
     cache_key = template_name
 
     if context is not None:
-        
+
         conv_context = {}
         for k,v in context.items():
             conv_context[conv_symbol_name(k)] = v
@@ -299,3 +272,42 @@ def template(template_name, context = None, dialect = None):
     else:
         raise ValueError('Template not found')
 
+class EscapeKeywords(object):
+
+    def __init__(self, dialect):
+
+        if dialect == 'mysql':
+            self.quote = '`'
+        else:
+            self.quote = '"'
+
+    def __call__(self, value):
+
+        if value in reserved_words:
+            return text(self.quote + value + self.quote)
+        else:
+            return value
+
+class QuoteName(object):
+
+    def __init__(self, dialect):
+
+        if dialect == 'mysql':
+            self.quote = '`'
+        else:
+            self.quote = '"'
+
+    def __call__(self, value):
+
+        if value in reserved_words or str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]+\s*', value) is None:
+            return text(self.quote + value + self.quote)
+        else:
+            return value
+
+esckwd = EscapeKeywords('psql')
+quotename = QuoteName('psql')
+quotevalue = lambda p: quote_param(p, dialect='psql')
+#coalesce = coalesce
+#chainlist = chainlist
+#starmap = starmap
+reduce = functools.reduce

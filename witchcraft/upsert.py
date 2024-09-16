@@ -294,6 +294,9 @@ def extract_number(number_str, decimal=None):
     groups_index = 0
     sign = None
 
+    if number_str is None:
+        return None
+
     for c in number_str:
 
         if c in ['.', ',']:

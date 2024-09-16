@@ -6,6 +6,6 @@ CREATE TABLE :schema_name.:table_name (
   _created_at timestamp without time zone not null default localtimestamp,
   _updated_at timestamp without time zone not null default localtimestamp
 
-  :(if (> (len primary_keys) 0)
+  :(when (> (len primary_keys) 0)
     (+ ", PRIMARY KEY (" (.join "," primary_keys) ")"))
 );

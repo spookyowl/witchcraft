@@ -10,7 +10,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 try:
     from UserDict import DictMixin
 except ImportError:
-    from collections import MutableMapping as DictMixin
+    from collections.abc import MutableMapping as DictMixin
 
 try:
     text = unicode
@@ -18,13 +18,7 @@ except NameError:
     text = str 
 
 
-# Use the same json implementation as itsdangerous because Flask does that
-# and we depend on it
-try:                                                                               
-    #from itsdangerous import simplejson as _json                                
-    from itsdangerous import json as _json                                      
-except ImportError:                                                             
-    import json as _json
+import json as _json
 
 
 def convert_column_name(column_name):
