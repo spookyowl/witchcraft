@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import string
 from decimal import Decimal
 import csv
@@ -312,7 +311,7 @@ def extract_number(number_str, decimal=None):
 
         elif c in '1234567890':
             groups[groups_index] += c
-            
+
             if sign is None:
                 sign = '+'
         else:
@@ -346,11 +345,28 @@ def extract_number(number_str, decimal=None):
 
     # xx.xx
     elif len(groups) == 2:
-        number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
-        precision = len(number.as_tuple().digits)
-        scale = - number.as_tuple().exponent
-        input_type = InputType('numeric', dict(precision=precision, scale=scale))
-        return number, input_type
+
+        if decimal is not None:
+
+            if decimal == True:
+                number = Decimal('%s%s.%s' % (sign,''.join(groups[0:-1]), groups[-1]))
+                precision = len(number.as_tuple().digits)
+                scale = - number.as_tuple().exponent
+                input_type = InputType('numeric', dict(precision=precision, scale=scale))
+                return number, input_type
+
+            else:
+                value = int('%s%s' % (sign,''.join(groups)))
+
+                if value <= 2147483647 and value >= -2147483648:
+                    return value, InputType('int')
+
+                elif value <= 9223372036854775807 and value >= -9223372036854775808:
+                    return value, InputType('bigint')
+
+        else:
+            value = int('%s%s' % (sign,''.join(groups)))
+            return value, InputType('text')
 
     # x.xxx,xx / x,xxx.xx
     elif len(groups) == 3 and separators[-1] != separators[-2]:
@@ -367,6 +383,17 @@ def extract_number(number_str, decimal=None):
         input_type = InputType('numeric', dict(precision=precision, scale=scale))
         return number, input_type
 
+    elif len(groups) >= 3 and separators[-1] == separators[-2]:
+        value = int('%s%s' % (sign,''.join(groups)))
+
+        if value <= 2147483647 and value >= -2147483648:
+            return value, InputType('int')
+
+        elif value <= 9223372036854775807 and value >= -9223372036854775808:
+            return value, InputType('bigint')
+
+        else:
+            return value, InputType('text')
 
     else:
         return None
@@ -453,7 +480,7 @@ def detect_type(value, current_type=None):
         if value == '' or value is None:
             return None, current_type
 
-        extract_result = extract_number(value)
+        extract_result = extract_number(value, True)
 
         # not a number
         if extract_result is None:
@@ -490,19 +517,19 @@ def detect_type(value, current_type=None):
             return None, current_type
 
         else:
-            extract_result = extract_number(value)
+            extract_result = extract_number(value, False)
 
             # not a number
             if extract_result is None:
                 return value, InputType('text')
 
             return extract_result
-        
+
     elif current_type.name == 'bool':
-        if value.lower() in ['true', 't', 'yes', 'y']:
+        if value.lower() in ['true', 't', 'yes', 'y', '1']:
             return True, InputType('bool')
 
-        elif value.lower() in ['false', 'f', 'no', 'n']:
+        elif value.lower() in ['false', 'f', 'no', 'n', '0']:
             return False, InputType('bool')
 
         else:
@@ -653,4 +680,9 @@ def format_header(header):
 
 
 if __name__ == '__main__':
-    print(detect_type('2017-05-17 12:27:25.2945'))
+    from icecream import ic
+    ic(extract_number('100,001', False))
+    ic(extract_number('100,001', True))
+    ic(extract_number('100,001', None))
+
+    ic(detect_type('50,000,001', InputType('int')))
