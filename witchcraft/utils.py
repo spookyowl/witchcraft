@@ -595,3 +595,50 @@ def find_query_template(template_name):
 
             return query_tpl
 
+
+def df_iter_rows(rows_iterator):
+
+    first_row = next(rows_iterator)
+
+    class DataPoint(Item):
+
+        def __init__(self):
+            super(DataPoint, self).__init__()
+
+            for key, value in first_row[1].to_dict().items():
+
+                if isinstance(value, int):
+                    self.add_field(key, psql_type='bigint')
+
+                elif isinstance(value, float):
+                    self.add_field(key, psql_type='float')
+
+                elif isinstance(value, Decimal):
+                    self.add_field(key, psql_type='numeric')
+
+                elif hasattr(value, "to_pydatetime"):
+
+                    if hasattr(value, "tz") and value.tz is not None:
+                        self.add_field(key, psql_type='timestamp with time zone')
+                    else:
+                        self.add_field(key, psql_type='timestamp without time zone')
+
+                else:
+                    self.add_field(key, psql_type='text')
+
+    dp = DataPoint()
+    dp.load(first_row[1].to_dict())
+    yield dp
+
+    for r in rows_iterator:
+        dp = DataPoint()
+        dp.load(r[1].to_dict())
+        yield dp
+
+def get_current_timestamp(connection):
+
+    if hasattr(connection, "get_current_timestamp"):
+        return connection.get_current_timestamp()
+
+    else:
+        return datetime.now()

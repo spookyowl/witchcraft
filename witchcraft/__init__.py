@@ -1,6 +1,6 @@
 from collections import namedtuple
 from datetime import datetime
-from witchcraft.utils import read_batch, remove_null_rows
+from witchcraft.utils import read_batch, remove_null_rows, df_iter_rows, get_current_timestamp
 from witchcraft.upsert import prepare_table, upsert_data, insert_data
 from witchcraft.upsert import delete_data, get_max_version, upsert_prepare_load_table, find_keys
 from witchcraft.combinators import query, template
@@ -18,6 +18,10 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None, 
 
     if isinstance(data_points, list):
         iterator = iter(data_points)
+
+    elif hasattr(data_points, 'dtypes') and hasattr(data_points, 'iterrows'):
+        iterator = df_iter_rows(data_points.iterrows())
+
     else:
         iterator = data_points
 
@@ -39,7 +43,7 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None, 
     if len(primary_keys) == 0:
         raise ValueError('Upsert method requires table to have primary key')
 
-    update_started_at = connection.get_current_timestamp()
+    update_started_at = get_current_timestamp(connection)
 
     upsert_prepare_load_table(connection, first_batch, primary_keys)
 
@@ -62,7 +66,7 @@ def upsert(connection, schema_name, table_name, data_points, primary_keys=None, 
         else:
             break
 
-    finished_at = connection.get_current_timestamp()
+    finished_at = get_current_timestamp(connection)
 
     return LoadResult(read_total, inserted_total, updated_total, 0, update_started_at, finished_at)
 
@@ -73,6 +77,10 @@ def insert(connection, schema_name, table_name, data_points, primary_keys, batch
 
     if isinstance(data_points, list):
         iterator = iter(data_points)
+
+    elif hasattr(data_points, 'dtypes') and hasattr(data_points, 'iterrows'):
+        iterator = df_iter_rows(data_points.iterrows())
+
     else:
         iterator = data_points
 
@@ -86,7 +94,7 @@ def insert(connection, schema_name, table_name, data_points, primary_keys, batch
     load_table_columns = find_keys(first_batch)
 
     prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys)
-    update_started_at = connection.get_current_timestamp()
+    update_started_at = get_current_timestamp(connection)
 
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)
     read_total += len(first_batch)
@@ -102,7 +110,7 @@ def insert(connection, schema_name, table_name, data_points, primary_keys, batch
         else:
             break
 
-    finished_at = connection.get_current_timestamp()
+    finished_at = get_current_timestamp(connection)
 
     return LoadResult(read_total, inserted_total, 0, 0, update_started_at, finished_at)
 
@@ -114,9 +122,13 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None,
 
     if primary_keys is None:
         primary_keys = []
-     
+
     if isinstance(data_points, list):
         iterator = iter(data_points)
+
+    elif hasattr(data_points, 'dtypes') and hasattr(data_points, 'iterrows'):
+        iterator = df_iter_rows(data_points.iterrows())
+
     else:
         iterator = data_points
 
@@ -130,7 +142,7 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None,
 
     prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys)
 
-    update_started_at = connection.get_current_timestamp()
+    update_started_at = get_current_timestamp(connection)
     deleted_total = delete_data(connection, schema_name, table_name)
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)
     read_total += len(first_batch)
@@ -146,7 +158,7 @@ def replace(connection, schema_name, table_name, data_points, primary_keys=None,
         else:
             break
 
-    finished_at = connection.get_current_timestamp()
+    finished_at = get_current_timestamp(connection)
     return LoadResult(read_total, inserted_total, 0, deleted_total, update_started_at, finished_at)
 
 
@@ -162,6 +174,10 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
 
     if isinstance(data_points, list):
         iterator = iter(data_points)
+
+    elif hasattr(data_points, 'dtypes') and hasattr(data_points, 'iterrows'):
+        iterator = df_iter_rows(data_points.iterrows())
+
     else:
         iterator = data_points
 
@@ -178,12 +194,12 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
     first_batch = list(map(add_history_column, first_batch))
 
     if len(first_batch) == 0:
-        now = connection.get_current_timestamp()
+        now = get_current_timestamp(connection)
         return LoadResult(0, 0, 0, 0, now, now)
 
     prepare_table(connection, schema_name, table_name, first_batch, None, primary_keys, version_column=version_column)
 
-    update_started_at = connection.get_current_timestamp()
+    update_started_at = get_current_timestamp(connection)
     inserted_total += insert_data(connection, schema_name, table_name, first_batch)
     read_total += len(first_batch)
 
@@ -201,6 +217,6 @@ def append_history(connection, schema_name, table_name, data_points, primary_key
             break
 
 
-    finished_at = connection.get_current_timestamp()
+    finished_at = get_current_timestamp(connection)
 
     return LoadResult(read_total, inserted_total, 0, 0, update_started_at, finished_at)
