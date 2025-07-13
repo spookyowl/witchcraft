@@ -72,10 +72,8 @@ def batch_fetch(connection, sql_query, batch_size):
 
     if result_proxy.returns_rows:
         result_type = build_tuple_type(*result_proxy.keys())
-        #result = map(lambda r: result_type(dict(r)), result_proxy)
 
         while True:
-            #chunk = list(islice(result, batch_size))
             chunk = islice(result_proxy, batch_size)
             chunk = list(map(lambda r: result_type(dict(r)), chunk))
 

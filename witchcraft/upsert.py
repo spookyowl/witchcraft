@@ -19,7 +19,7 @@ prefix_dict = {
 
 def get_script_prefix(connection):
     if hasattr(connection, "database_type"):
-        return connection.database_type
+        return prefix_dict.get(connection.database_type)
     else:
         return prefix_dict.get("pgsql")
 
