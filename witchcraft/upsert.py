@@ -386,7 +386,6 @@ def extract_number(number_str, decimal=None):
     groups = [""]
     groups_index = 0
     sign = None
-
     if number_str is None:
         return None
 
@@ -456,8 +455,17 @@ def extract_number(number_str, decimal=None):
                 elif value <= 9223372036854775807 and value >= -9223372036854775808:
                     return value, InputType("bigint")
 
+        elif len(groups[-1]) != 3:
+            number = Decimal("%s%s.%s" % (sign, "".join(groups[0:-1]), groups[-1]))
+            precision = len(number.as_tuple().digits)
+            scale = -number.as_tuple().exponent
+            input_type = InputType(
+                "numeric", dict(precision=precision, scale=scale)
+            )
+            return number, input_type
+
         else:
-            value = int("%s%s" % (sign, "".join(groups)))
+            value = "%s%s" % (sign, "".join(groups))
             return value, InputType("text")
 
     # x.xxx,xx / x,xxx.xx
@@ -538,6 +546,9 @@ def parse_csv(input_data, delimiter=";", quotechar='"'):
 def detect_type(value, current_type=None):
     # TODO: Optimize, this is where 80-90% time is spent when loading data
     if value is None:
+        return None, current_type
+
+    if value == '' and (current_type is None or current_type.name != 'text'):
         return None, current_type
 
     if current_type is None:
@@ -677,6 +688,7 @@ def preprocess_csv_data(input_data):
     return formated_header, header, data[1:]
 
 
+#TODO is this even used?
 def get_row_data_types(header, row, current_types=None, detect_type_func=None):
     if detect_type_func is None:
         detect_type_func = detect_type
@@ -727,7 +739,7 @@ def get_data_types(header, data, current_types=None, detect_type_func=None):
         result_data.append(result_row)
 
     for h in header:
-        if h not in current_types:
+        if current_types.get(h) is None:
             current_types[h] = "text"
 
     return result_data, current_types
@@ -781,3 +793,6 @@ if __name__ == "__main__":
     ic(extract_number("100,001", None))
 
     ic(detect_type("50,000,001", InputType("int")))
+
+    ic(extract_number("-25.40"))
+    ic(detect_type(""))
