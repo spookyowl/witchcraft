@@ -1,16 +1,18 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
-import re
-import os
 import binascii
-import json
-import uuid
 import functools
-from itertools import starmap
-from pyparsing import *
+import json
+import os
+import re
+import uuid
+from datetime import date, datetime, time
 from decimal import Decimal
-from datetime import datetime, date, time
-from witchcraft.utils import coalesce, chainlist, find_query_template, __query_paths
+from itertools import starmap
+
+from pyparsing import *
+
+from witchcraft.utils import __query_paths, chainlist, coalesce, find_query_template
 
 try:
     import itertools.imap as map
@@ -21,7 +23,7 @@ except ImportError:
 try:
     text = unicode
 except NameError:
-    text = str 
+    text = str
 
 try:
     long
@@ -29,36 +31,37 @@ except NameError:
     long = int
 
 import hy
-#from hy.lex import parser, lexer
-#from hy import HyList
-#from hy.importer import hy_eval
+
+# from hy.lex import parser, lexer
+# from hy import HyList
+# from hy.importer import hy_eval
 from psycopg2.extensions import QuotedString as SqlString
 
-
 reserved_words = []
-rw_path = os.path.join(os.path.dirname(__file__), 'reserved_psql.txt')
+rw_path = os.path.join(os.path.dirname(__file__), "reserved_psql.txt")
 
 
-with open(rw_path, 'r') as rwfd:
-    reserved_words = rwfd.read().split(',\n')
+with open(rw_path, "r") as rwfd:
+    reserved_words = rwfd.read().split(",\n")
 
 
 def string_to_quoted_expr(s):
-  return HyList(parser.parse(lexer.lex(s)))
+    return HyList(parser.parse(lexer.lex(s)))
 
-    
 
-def quote_param(value, dialect='psql'):
-    #print(str(value)[0:70], type(value))
+def quote_param(value, dialect="psql"):
+    # print(str(value)[0:70], type(value))
 
     if value is None:
         return "NULL"
 
     if isinstance(value, bytes):
-        return "decode('%s', 'hex')::bytea" % binascii.hexlify(value).decode('ascii')
+        return "decode('%s', 'hex')::bytea" % binascii.hexlify(value).decode("ascii")
 
     if isinstance(value, memoryview):
-        return "decode('%s', 'hex')::bytea" % binascii.hexlify(bytes(value)).decode('ascii')
+        return "decode('%s', 'hex')::bytea" % binascii.hexlify(bytes(value)).decode(
+            "ascii"
+        )
 
     if isinstance(value, int) or isinstance(value, long):
         return str(value)
@@ -70,26 +73,26 @@ def quote_param(value, dialect='psql'):
         return str(value)
 
     if isinstance(value, text):
-        #value = value.replace(':',"\:")
-        value = value.replace('%','%%')
-        value = value.replace('\x00',' ')
+        # value = value.replace(':',"\:")
+        value = value.replace("%", "%%")
+        value = value.replace("\x00", " ")
         sql_string_value = SqlString(value)
-        sql_string_value.encoding = 'utf-8'
+        sql_string_value.encoding = "utf-8"
         return sql_string_value.getquoted().decode("utf-8")
 
     if isinstance(value, str):
-        #value = value.replace(':',"\:")
-        value = value.replace('%','%%')
-        value = value.replace('\x00',' ')
+        # value = value.replace(':',"\:")
+        value = value.replace("%", "%%")
+        value = value.replace("\x00", " ")
         sql_string_value = SqlString(value)
-        sql_string_value.encoding = 'utf-8'
+        sql_string_value.encoding = "utf-8"
         return sql_string_value.getquoted().decode("utf-8")
 
     if isinstance(value, datetime):
-        if dialect == 'oracle':
-            return "timestamp '%s'" % value.isoformat(' ').split('.')[0]
+        if dialect == "oracle":
+            return "timestamp '%s'" % value.isoformat(" ").split(".")[0]
         else:
-            return "'%s'" % value.isoformat(' ')
+            return "'%s'" % value.isoformat(" ")
 
     if isinstance(value, date):
         return "'%s'" % value.isoformat()
@@ -102,25 +105,24 @@ def quote_param(value, dialect='psql'):
 
     if isinstance(value, dict):
         sql_string_value = SqlString(json.dumps(value))
-        sql_string_value.encoding = 'utf-8'
+        sql_string_value.encoding = "utf-8"
         value = sql_string_value.getquoted().decode("utf-8")
-        value = value.replace('%','%%')
+        value = value.replace("%", "%%")
         return value
 
     if isinstance(value, set):
         quote_func = lambda p: quote_param(p, dialect)
-        return "(" + ','.join(map(quote_func, value)) + ")"
+        return "(" + ",".join(map(quote_func, value)) + ")"
 
     if isinstance(value, tuple):
         quote_func = lambda p: quote_param(p, dialect)
-        return "(" + ','.join(map(quote_func, value)) + ")"
-
+        return "(" + ",".join(map(quote_func, value)) + ")"
 
     if isinstance(value, list):
         quote_func = lambda p: quote_param(p, dialect)
 
         try:
-            return "(" + ','.join(map(quote_func, value)) + ")"
+            return "(" + ",".join(map(quote_func, value)) + ")"
         except Exception as e:
             print(e)
             raise ValueError(value)
@@ -128,14 +130,12 @@ def quote_param(value, dialect='psql'):
     raise ValueError("unhandled type: %s, %s" % (type(value), value))
 
 
-
 class Parameter(object):
-
     def __init__(self, token):
-        self.quote = (token[0][0] == '?')
+        self.quote = token[0][0] == "?"
         self.name = token[0][1]
 
-    def evaluate(self, context, dialect='psql'):
+    def evaluate(self, context, dialect="psql"):
         value = context.get(self.name)
 
         if self.name not in context:
@@ -145,8 +145,12 @@ class Parameter(object):
 
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
 
-        if isinstance(value, list) or isinstance(value, map) or isinstance(value, starmap):
-            value = ', '.join(list(map(conv_func, value)))
+        if (
+            isinstance(value, list)
+            or isinstance(value, map)
+            or isinstance(value, starmap)
+        ):
+            value = ", ".join(list(map(conv_func, value)))
         else:
             value = conv_func(value)
 
@@ -154,28 +158,27 @@ class Parameter(object):
 
 
 class EvalExpression(object):
-
     def __init__(self, token):
-        self.quote = (token[0][0] == '?')
+        self.quote = token[0][0] == "?"
         self.expression = token[0][1]
 
-    def evaluate(self, context, dialect='psql'):
+    def evaluate(self, context, dialect="psql"):
         global_ctx = globals()
-        #global_ctx['esckwd'] = EscapeKeywords(dialect)
-        #global_ctx['quotename'] = QuoteName(dialect)
-        #global_ctx['quotevalue'] = lambda p: quote_param(p, dialect=dialect)
-        #global_ctx['coalesce'] = coalesce
-        #global_ctx['chainlist'] = chainlist
-        #global_ctx['template'] = template
-        #global_ctx['starmap'] = starmap
-        #global_ctx['reduce'] = functools.reduce
+        # global_ctx['esckwd'] = EscapeKeywords(dialect)
+        # global_ctx['quotename'] = QuoteName(dialect)
+        # global_ctx['quotevalue'] = lambda p: quote_param(p, dialect=dialect)
+        # global_ctx['coalesce'] = coalesce
+        # global_ctx['chainlist'] = chainlist
+        # global_ctx['template'] = template
+        # global_ctx['starmap'] = starmap
+        # global_ctx['reduce'] = functools.reduce
         global_ctx.update(context)
-        #print(type(global_ctx), global_ctx.keys())
+        # print(type(global_ctx), global_ctx.keys())
 
-        #result = string_to_quoted_expr(self.expression)
-        #result = hy_eval(result, ctx, 'inline_hy')[0]
-        #hycode = hy.read_str(self.expression)
-        #result = hycode.eval(ctx, 'inline_hy')
+        # result = string_to_quoted_expr(self.expression)
+        # result = hy_eval(result, ctx, 'inline_hy')[0]
+        # hycode = hy.read_str(self.expression)
+        # result = hycode.eval(ctx, 'inline_hy')
 
         hycode = hy.read(self.expression)
         result = hy.eval(hycode, globals=global_ctx, locals=global_ctx)
@@ -185,15 +188,20 @@ class EvalExpression(object):
         conv_func = quote_func if self.quote else EscapeKeywords(dialect)
 
         if result is None:
-            result = ''
+            result = ""
 
-        elif isinstance(result, list) or isinstance(result, map) or isinstance(result, starmap):
-
+        elif (
+            isinstance(result, list)
+            or isinstance(result, map)
+            or isinstance(result, starmap)
+        ):
             try:
-                result = ', '.join(list(map(conv_func, result)))
+                result = ", ".join(list(map(conv_func, result)))
 
             except Exception as exc:
-                raise ValueError('Unhandled Error context:%s exception:%s ' % ("???", exc) )
+                raise ValueError(
+                    "Unhandled Error context:%s exception:%s " % ("???", exc)
+                )
         else:
             result = conv_func(result)
 
@@ -201,59 +209,76 @@ class EvalExpression(object):
 
 
 class Template(object):
+    substatement = Combine(
+        OneOrMore(
+            White()
+            | Regex("[^?:'\"]+")
+            | Literal("??")
+            | Literal("::")
+            | QuotedString("'", "\\", None, False, False)
+            | QuotedString('"', "\\", None, False, False)
+        )
+    )
 
-    substatement = Combine(OneOrMore(White() | Regex("[^?:'\"]+") | Literal('??') | Literal("::") | QuotedString("'", '\\', None, False, False) | QuotedString('"', '\\', None, False, False)))
-
-    named_parameter = Group((Literal(':') | Literal('?')) + Word(alphas+"_-", alphas+nums+"_-"))
-    named_parameter.setParseAction(lambda s,l,t: Parameter(t))
+    named_parameter = Group(
+        (Literal(":") | Literal("?")) + Word(alphas + "_-", alphas + nums + "_-")
+    )
+    named_parameter.setParseAction(lambda s, l, t: Parameter(t))
 
     anything = Regex("[^()]*")
 
     lisp_expression = Forward()
-    lisp_expression << Combine(Literal('(') + (Optional(anything) + ZeroOrMore (anything + lisp_expression + anything)) + Literal(')'))
+    lisp_expression << Combine(
+        Literal("(")
+        + (Optional(anything) + ZeroOrMore(anything + lisp_expression + anything))
+        + Literal(")")
+    )
 
-    eval_expression = Group((Literal(':') | Literal('?')) + lisp_expression)
-    eval_expression.setParseAction(lambda s,l,t: EvalExpression(t))
+    eval_expression = Group((Literal(":") | Literal("?")) + lisp_expression)
+    eval_expression.setParseAction(lambda s, l, t: EvalExpression(t))
 
     parameter = named_parameter | eval_expression
 
-    statement = Optional(substatement) + ZeroOrMore( parameter + substatement) + Optional(parameter)
+    statement = (
+        Optional(substatement)
+        + ZeroOrMore(parameter + substatement)
+        + Optional(parameter)
+    )
     statement.leaveWhitespace()
 
-    def __init__(self, tpl, dialect = 'psql'):
+    def __init__(self, tpl, dialect="psql"):
         self.tpl = tpl
-        first_line = self.tpl.splitlines()[0] #TODO: To get dialect
+        first_line = self.tpl.splitlines()[0]  # TODO: To get dialect
         self.dialect = dialect
 
     def substitute(self, **context):
-        acc = ''
+        acc = ""
         vec = self.statement.parseString(self.tpl)
         for e in vec:
-
             if isinstance(e, str):
                 acc += text(e)
 
             else:
                 acc += text(e.evaluate(context, self.dialect))
 
-        #escape replace
-        return acc.replace('??','?')
+        # escape replace
+        return acc.replace("??", "?")
 
 
 __template_cache = {}
 
+
 def conv_symbol_name(s):
-    s = s.lstrip(u'\ufdd0:')
-    return s.replace('-','_')
+    s = s.lstrip("\ufdd0:")
+    return s.replace("-", "_")
 
 
-def template(template_name, context = None, dialect = None):
+def template(template_name, context=None, dialect=None):
     cache_key = template_name
 
     if context is not None:
-
         conv_context = {}
-        for k,v in context.items():
+        for k, v in context.items():
             conv_context[conv_symbol_name(k)] = v
     else:
         conv_context = {}
@@ -261,7 +286,7 @@ def template(template_name, context = None, dialect = None):
     found = __template_cache.get(cache_key)
 
     if found is not None:
-        #TODO: handle dialect when teplate is used
+        # TODO: handle dialect when teplate is used
         return Template(found, dialect).substitute(**conv_context)
 
     query_tpl = find_query_template(template_name)
@@ -270,44 +295,45 @@ def template(template_name, context = None, dialect = None):
         __template_cache[cache_key] = query_tpl
         return Template(query_tpl, dialect).substitute(**conv_context)
     else:
-        raise ValueError('Template not found')
+        raise ValueError("Template not found")
+
 
 class EscapeKeywords(object):
-
     def __init__(self, dialect):
-
-        if dialect == 'mysql':
-            self.quote = '`'
+        if dialect == "mysql":
+            self.quote = "`"
         else:
             self.quote = '"'
 
     def __call__(self, value):
-
         if value in reserved_words:
             return text(self.quote + value + self.quote)
         else:
             return value
 
+
 class QuoteName(object):
-
     def __init__(self, dialect):
-
-        if dialect == 'mysql':
-            self.quote = '`'
+        if dialect == "mysql":
+            self.quote = "`"
         else:
             self.quote = '"'
 
     def __call__(self, value):
-
-        if value in reserved_words or str(value).lower() != str(value) or re.match('[A-Za-z_][A-Za-z0-9_]+\s*', value) is None:
+        if (
+            value in reserved_words
+            or str(value).lower() != str(value)
+            or re.match("[A-Za-z_][A-Za-z0-9_]+\s*", value) is None
+        ):
             return text(self.quote + value + self.quote)
         else:
             return value
 
-esckwd = EscapeKeywords('psql')
-quotename = QuoteName('psql')
-quotevalue = lambda p: quote_param(p, dialect='psql')
-#coalesce = coalesce
-#chainlist = chainlist
-#starmap = starmap
+
+esckwd = EscapeKeywords("psql")
+quotename = QuoteName("psql")
+quotevalue = lambda p: quote_param(p, dialect="psql")
+# coalesce = coalesce
+# chainlist = chainlist
+# starmap = starmap
 reduce = functools.reduce
