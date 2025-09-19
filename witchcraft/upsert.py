@@ -207,7 +207,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
     prefix = get_script_prefix(connection)
     column_names = list(find_keys(data_points))
 
-    connection.begin()
+    #connection.begin()
 
     execute(
         connection,
@@ -257,7 +257,7 @@ def upsert_data(connection, schema_name, table_name, data_points, primary_keys):
         ),
     )
 
-    connection.commit()
+    #connection.commit()
 
     return (inserted, updated)
 
@@ -266,7 +266,7 @@ def insert_data(connection, schema_name, table_name, data_points):
     prefix = get_script_prefix(connection)
     column_names = list(find_keys(data_points))
 
-    tx = connection.begin()
+    #tx = connection.begin()
 
     inserted = query(
         connection,
@@ -283,11 +283,11 @@ def insert_data(connection, schema_name, table_name, data_points):
         ),
     )
 
-    if hasattr(connection, "commit"):
-        connection.commit()
+    #if hasattr(connection, "commit"):
+    #    connection.commit()
 
-    else:
-        tx.commit()
+    #else:
+    #    tx.commit()
 
     return inserted[0].count
 
