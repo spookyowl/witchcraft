@@ -176,7 +176,7 @@ def replace(
     else:
         iterator = data_points
 
-    first_batch = read_batch(iterator, batch_size=None)
+    first_batch = read_batch(iterator, batch_size)
 
     if len(first_batch) == 0:
         now = connection.get_current_timestamp()
