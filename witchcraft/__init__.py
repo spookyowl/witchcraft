@@ -192,7 +192,7 @@ def replace(
     read_total += len(first_batch)
 
     while True:
-        batch = read_batch(iterator)
+        batch = read_batch(iterator, batch_size)
         batch = remove_null_rows(batch, primary_keys)
 
         if len(batch) > 0:
