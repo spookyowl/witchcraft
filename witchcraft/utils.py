@@ -606,8 +606,10 @@ def df_iter_rows(rows_iterator):
             super(DataPoint, self).__init__()
 
             for key, value in first_row[1].to_dict().items():
+                if isinstance(value, bool):
+                    self.add_field(key, psql_type='boolean')
 
-                if isinstance(value, int):
+                elif isinstance(value, int):
                     self.add_field(key, psql_type='bigint')
 
                 elif isinstance(value, float):
