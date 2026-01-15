@@ -212,13 +212,16 @@ class Template(object):
     substatement = Combine(
         OneOrMore(
             White()
-            | Regex("[^?:'\"]+")
+            | Regex("([^:?'\"]+)")
             | Literal("??")
             | Literal("::")
+            | Regex("\/.*\/")
             | QuotedString("'", "\\", None, False, False)
             | QuotedString('"', "\\", None, False, False)
         )
     )
+
+    comment = Regex("--.*$")
 
     named_parameter = Group(
         (Literal(":") | Literal("?")) + Word(alphas + "_-", alphas + nums + "_-")
