@@ -49,7 +49,7 @@ def quote_param(value, dialect="psql"):
             "ascii"
         )
 
-    if isinstance(value, int) or isinstance(value, long):
+    if isinstance(value, int):
         return str(value)
 
     if isinstance(value, float):
