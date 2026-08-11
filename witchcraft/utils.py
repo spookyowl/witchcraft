@@ -5,6 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 import itertools
 import os
+import re
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 try:

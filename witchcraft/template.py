@@ -20,21 +20,7 @@ except ImportError:
     pass
 
 
-try:
-    text = unicode
-except NameError:
-    text = str
-
-try:
-    long
-except NameError:
-    long = int
-
 import hy
-
-# from hy.lex import parser, lexer
-# from hy import HyList
-# from hy.importer import hy_eval
 from psycopg2.extensions import QuotedString as SqlString
 
 reserved_words = []
@@ -72,8 +58,7 @@ def quote_param(value, dialect="psql"):
     if isinstance(value, Decimal):
         return str(value)
 
-    if isinstance(value, text):
-        # value = value.replace(':',"\:")
+    if isinstance(value, str):
         value = value.replace("%", "%%")
         value = value.replace("\x00", " ")
         sql_string_value = SqlString(value)
@@ -81,7 +66,6 @@ def quote_param(value, dialect="psql"):
         return sql_string_value.getquoted().decode("utf-8")
 
     if isinstance(value, str):
-        # value = value.replace(':',"\:")
         value = value.replace("%", "%%")
         value = value.replace("\x00", " ")
         sql_string_value = SqlString(value)
@@ -259,13 +243,13 @@ class Template(object):
         vec = self.statement.parseString(self.tpl)
         for e in vec:
             if isinstance(e, str):
-                acc += text(e)
+                # escape replace
+                acc += str(e).replace("??", "?")
 
             else:
-                acc += text(e.evaluate(context, self.dialect))
+                acc += str(e.evaluate(context, self.dialect))
 
-        # escape replace
-        return acc.replace("??", "?")
+        return acc
 
 
 __template_cache = {}
@@ -310,7 +294,7 @@ class EscapeKeywords(object):
 
     def __call__(self, value):
         if value in reserved_words:
-            return text(self.quote + value + self.quote)
+            return str(self.quote + value + self.quote)
         else:
             return value
 
@@ -328,7 +312,7 @@ class QuoteName(object):
             or str(value).lower() != str(value)
             or re.match("[A-Za-z_][A-Za-z0-9_]+\s*", value) is None
         ):
-            return text(self.quote + value + self.quote)
+            return str(self.quote + value + self.quote)
         else:
             return value
 

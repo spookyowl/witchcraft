@@ -678,7 +678,7 @@ def detect_type(value, current_type=None):
 
 def preprocess_csv_data(input_data):
     data = parse_csv(input_data)
-
+    print(data)
     if len(data) < 2:
         raise ValueError("Not enough data")
 
@@ -783,16 +783,3 @@ def format_header(header):
         formated_header.append(buf)
 
     return formated_header
-
-
-if __name__ == "__main__":
-    from icecream import ic
-
-    ic(extract_number("100,001", False))
-    ic(extract_number("100,001", True))
-    ic(extract_number("100,001", None))
-
-    ic(detect_type("50,000,001", InputType("int")))
-
-    ic(extract_number("-25.40"))
-    ic(detect_type(""))
